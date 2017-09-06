@@ -246,6 +246,8 @@ local function scheduleTask( pdev, taskObj )
 
     local t = shallowcopy(taskObj)
     t.caller = debug.getinfo(2, "n")
+    t.time = t.time or os.time()
+    t.dev = t.dev or pdev
     insertTask( pdev, t )
 
     -- If new task runs sooner than head task, need to reschedule
@@ -317,7 +319,7 @@ function runTask(p)
         else 
             f = t.func
         end
-        status, err = pcall( f, t.dev, pdev )
+        status, err = pcall( f, t.dev or pdev, pdev )
         if not status then
             D("Task %1 by %3 failed, %2", t.type, err, t.caller)
         end
@@ -459,6 +461,20 @@ local function coolOff(dev)
     scheduleTask( dev, { ['type']="fan", func=fanAutoOff, dev=dev, ['time']=os.time()+fanDelay } )
 end
 
+local function goIdle( dev, currState )
+    D("goIdle(%1,%2)", dev, currState)
+    if currState == nil then currState = luup.variable_get( OPMODE_SID, "ModeStatus", dev ) or "Off" end
+    if currState == "CoolOn" then
+        coolOff(dev)
+    elseif currState == "HeatOn" then  
+        heatOff(dev)
+    end
+end    
+
+local function taskIdle( dev, pdev )
+    goIdle(pdev)
+end
+
 -- Turn heating unit on.
 local function heatOn(dev)
     D("heatOn(%1)", dev)
@@ -485,11 +501,11 @@ local function callHeat(dev)
     local delay = getVarNumeric( "FanOnDelayHeating", 0, dev )
     if delay < 0 then
         -- If delay < 0, then start heating first, then fan
-        scheduleTask( dev, { ['type']="heat", func=heatOn, dev=dev, ['time']=now } )
+        scheduleTask( dev, { ['type']="heat", func=heatOn, dev=dev } )
         scheduleTask( dev, { ['type']="fan", func=fanOn, dev=dev, ['time']=now-delay } )
     else    
         -- Normal delay, fan first, then heater
-        scheduleTask( dev, { ['type']="fan", func=fanOn, dev=dev, ['time']=now } )
+        scheduleTask( dev, { ['type']="fan", func=fanOn, dev=dev } )
         scheduleTask( dev, { ['type']="heat", func=heatOn, dev=dev, ['time']=now+delay } )
     end
     return true
@@ -521,10 +537,10 @@ local function callCool(dev)
     local delay = getVarNumeric( "FanOnDelayCooling", 0, dev )
     if delay < 0 then
         -- If delay < 0, then start cooling first, then fan
-        scheduleTask( dev, { ['type']="cool", func=coolOn, dev=dev, ['time']=now } )
+        scheduleTask( dev, { ['type']="cool", func=coolOn, dev=dev } )
         scheduleTask( dev, { ['type']="fan", func=fanOn, dev=dev, ['time']=now-delay } )
     else
-        scheduleTask( dev, { ['type']="fan", func=fanOn, dev=dev, ['time']=now } )
+        scheduleTask( dev, { ['type']="fan", func=fanOn, dev=dev } )
         scheduleTask( dev, { ['type']="cool", func=coolOn, dev=dev, ['time']=now+delay } )
     end
     return true
@@ -576,7 +592,7 @@ local function checkSensors(dev)
     local maxSensorBattery = getVarNumeric( "MaxSensorBattery", 7200, dev )
     for _,ts in ipairs(tst) do
         local tnum = tonumber(ts,10) or 0
-        local since = getVarNumeric( "LastUpdate", now, tnum, HADEVICE_SID )
+        local since = getVarNumeric( "LastUpdate", 0, tnum, HADEVICE_SID )
         local batt = getVarNumeric( "BatteryDate", nil, tnum, HADEVICE_SID )
         if batt == nil and luup.devices[tnum] and luup.devices[tnum].device_num_parent then
             batt = getVarNumeric( "BatteryDate", nil, luup.devices[tnum].device_num_parent, HADEVICE_SID )
@@ -616,11 +632,12 @@ local function checkSensors(dev)
     if tempCount == 0 then
         -- No valid sensors!
         L("No valid sensors.")
-        luup.variable_set( MYSID, "DisplayTemperature", "--.-", dev )
+        luup.variable_set( MYSID, "DisplayTemperature", "<span style='font-size:1.5em; font-weight: bold;'>--.-&deg;</span>", dev )
         luup.variable_set( MYSID, "Failure", "1", dev )
+        scheduleTask( dev, { ['type']='goidle', func=taskIdle } )
         return
     end
-    currentTemp = round(currentTemp * 100 / tempCount) / 100
+    currentTemp = round(currentTemp * 10 / tempCount) / 10
     D("checkSensors() %1 valid sensors, average temp is %2", tempCount, currentTemp)
     luup.variable_set( TEMPSENS_SID, "CurrentTemperature", currentTemp, dev )
     luup.variable_set( HADEVICE_SID, "LastUpdate", now, dev )
@@ -631,9 +648,7 @@ local function checkSensors(dev)
     if devLockout[dev] > 0 then
         if now < devLockout[dev] then
             L("checkSensors() lockout in effect, %1 seconds to go...", devLockout[dev] - os.time())
-            if modeStatus == "CoolOn" then coolOff(dev) end
-            if modeStatus == "HeatOn" then heatOff(dev) end
-            luup.variable_set( OPMODE_SID, "ModeStatus", "Lockout", dev )
+            scheduleTask( dev, { ['type']='goidle', func=taskIdle, dev=dev } )
             return
         end
         L("checkSensors() restoring from lockout")
@@ -715,15 +730,6 @@ local function checkSensors(dev)
     updateDisplayStatus(dev)
 end
 
-local function goIdle( dev, currState )
-    D("goIdle(%1,%2)", dev, currState)
-    if currState == "CoolOn" then
-        coolOff(dev)
-    elseif currState == "HeatOn" then  
-        heatOff(dev)
-    end
-end    
-
 local function transition( dev, oldTarget, newTarget )
     D("transition(%1,%2,%3)", dev, oldTarget, newTarget)
 
@@ -784,7 +790,7 @@ function varChanged( dev, sid, var, oldVal, newVal )
         elseif var == "ModeStatus" then
             updateDisplayStatus(luup.device)
         end
-    elseif sid == SETPOINT_SID or sid == TEMPSENS_SID then
+    elseif sid == MYSID or sid == TEMPSENS_SID then
         checkSensors(luup.device)
     else    
         L("*** Unexpected watch callback for dev=%1, sid=%2, var=%3 (from %4 to %5)", dev, sid, var, oldVal, newVal)
@@ -1065,4 +1071,8 @@ function plugin_init(dev)
 
     luup.set_failure( 0, dev )
     return true, "OK", _PLUGIN_NAME
+end
+
+function getVersion()
+    return _PLUGIN_VERSION, _PLUGIN_NAME, _CONFIGVERSION
 end

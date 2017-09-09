@@ -26,7 +26,7 @@ local devLastOff = {}
 local devCycleStart = {}
 local devLockout = {}
 
-local debugMode = true
+local debugMode = false
 
 local isALTUI = false
 local isOpenLuup = false
@@ -965,7 +965,7 @@ local function plugin_runOnce(dev)
         D("runOnce() Performing first-time initialization!")
         luup.variable_set(MYSID, "SetpointHeating", "72", dev)
         luup.variable_set(MYSID, "SetpointCooling", "72", dev)
-        luup.variable_set(MYSID, "Differential", "2", dev)
+        luup.variable_set(MYSID, "Differential", "1", dev)
         luup.variable_set(MYSID, "Interval", "60", dev)
         luup.variable_set(MYSID, "EquipmentDelay", "300", dev)
         luup.variable_set(MYSID, "FanOnDelayCooling", "0", dev)

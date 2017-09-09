@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<implementation>
+    <functions>
+        -- -------------------------------------------------------------------------------------------------------------------------
+        -- AutoVirtualThermostat -- Auto-changeover virtual thermostat for Vera/MiOS
+        -- Copyright 2017 Patrick Rigney, All Rights Reserved
+        -- http://www.toggledbits.com/avt/
+        -- Reference: http://wiki.micasaverde.com/index.php/Luup_UPnP_Variables_and_Actions#HVAC_UserOperatingMode1
+        -- Reference: http://upnp.org/specs/ha/UPnP-ha-HVAC_UserOperatingMode-v1-Service.pdf
+        -- -------------------------------------------------------------------------------------------------------------------------
+        function startupAVT(dev)
+            luup.log("AutoVirtualThermostat Plugin START-UP!")
+            AutoVirtualThermostat = require("L_AutoVirtualThermostat1")
+            avtRunScheduledTask = AutoVirtualThermostat.runTask
+            avtVarChanged = AutoVirtualThermostat.varChanged
+            avtRequestHandler = AutoVirtualThermostat.requestHandler
+            luup.register_handler("avtRequestHandler", "AVT")
+            return AutoVirtualThermostat.plugin_init(dev)
+        end
+    </functions>
+    <startup>startupAVT</startup>
+    <actionList>
+        <action>
+            <serviceId>urn:upnp-org:serviceId:HVAC_UserOperatingMode1</serviceId>
+            <name>SetModeTarget</name>
+            <run>
+                -- Change the operating to one of Off, HeatOn, CoolOn, AutoChangeOver
+                -- receives NewModeTarget; variables ModeTarget/ModeStatus
+                local newMode = lul_settings.NewModeTarget
+                AutoVirtualThermostat.actionSetModeTarget( lul_device, newMode )
+            </run>
+        </action>
+        <action>
+            <serviceId>urn:upnp-org:serviceId:HVAC_UserOperatingMode1</serviceId>
+            <name>GetModeTarget</name>
+            <run>
+                -- Luup takes care of returning relatedStateVariable
+            </run>
+        </action>
+        <action>
+            <serviceId>urn:upnp-org:serviceId:HVAC_UserOperatingMode1</serviceId>
+            <name>GetModeStatus</name>
+            <run>
+                -- Luup takes care of returning relatedStateVariable
+            </run>
+        </action>
+        <action>
+            <serviceId>urn:upnp-org:serviceId:HVAC_FanOperatingMode1</serviceId>
+            <name>SetMode</name>
+            <run>
+                -- Sets fan operating mode to one of Auto, ContinousOn, PeriodicOn
+                -- receives NewMode; related Mode, FanStatus ("On", "Off")
+                AutoVirtualThermostat.actionSetFanMode( lul_device, lul_settings.NewMode )
+            </run>
+        </action>
+        <action>
+            <serviceId>urn:upnp-org:serviceId:HVAC_FanOperatingMode1</serviceId>
+            <name>GetMode</name>
+            <run>
+                -- Luup takes care of returning relatedStateVariable
+            </run>
+        </action>
+        <action>
+            <serviceId>urn:upnp-org:serviceId:TemperatureSetpoint1</serviceId>
+            <name>SetApplication</name>
+            <run>
+                -- Set application for setpoint. See http://upnp.org/specs/ha/UPnP-ha-TemperatureSetpoint-v1-Service.pdf
+                -- receives NewApplication; related Application
+                AutoVirtualThermostat.actionSetApplication( lul_device, lul_settings.NewApplication )
+            </run>
+        </action>
+        <action>
+            <serviceId>urn:upnp-org:serviceId:TemperatureSetpoint1</serviceId>
+            <name>GetApplication</name>
+            <run>
+                -- Luup takes care of returning relatedStateVariable
+            </run>
+        </action>
+        <action>
+            <serviceId>urn:upnp-org:serviceId:TemperatureSetpoint1</serviceId>
+            <name>SetCurrentSetpoint</name>
+            <run>
+                -- Set temperature setpoint. Semantics of this on dual-mode thermostats are plus on.
+                -- See http://upnp.org/specs/ha/UPnP-ha-TemperatureSetpoint-v1-Service.pdf
+                AutoVirtualThermostat.actionSetCurrentSetpoint( lul_device, lul_settings.NewCurrentSetpoint )
+            </run>
+        </action>
+        <action>
+            <serviceId>urn:upnp-org:serviceId:TemperatureSetpoint1</serviceId>
+            <name>GetCurrentSetpoint</name>
+            <run>
+                -- Get current setpoint. Take Application into account.
+                local app = luup.variable_get( "urn:upnp-org:serviceId:TemperatureSetpoint1", "Application", lul_device ) or "DualHeatingCooling"
+                if app == "Heating" then
+                    luup.variable_set( "urn:upnp-org:serviceId:TemperatureSetpoint1", "CurrentSetpoint", 
+                        luup.variable_get( "urn:toggledbits-com:serviceId:AutoVirtualThermostat1", "SetpointHeating", lul_device ), lul_device )
+                elseif app == "Cooling" then
+                    luup.variable_set( "urn:upnp-org:serviceId:TemperatureSetpoint1", "CurrentSetpoint",
+                        luup.variable_get( "urn:toggledbits-com:serviceId:AutoVirtualThermostat1", "SetpointCooling", lul_device ), lul_device )
+                end
+                -- Don't REALLY need this, because Luup seems to fetch and return the value on its own (via relatedStateVariable in S_).
+                return luup.variable_get( "urn:upnp-org:serviceId:TemperatureSetpoint1", "CurrentSetpoint", lul_device )
+            </run>
+        </action>
+        <action>
+            <serviceId>urn:toggledbits-com:serviceId:AutoVirtualThermostat1</serviceId>
+            <name>SetCurrentSetpoint</name>
+            <run>
+                -- Set heating/cooling/dual setpoint. Goes through UPnP TemperatureSetpoint1, so we need to set application. See above.
+                local app = lul_settings.Application or "DualHeatingCooling"
+                luup.call_action( "urn:upnp-org:serviceId:TemperatureSetpoint1", "SetApplication", { NewApplication=app }, lul_device )
+                luup.call_action( "urn:upnp-org:serviceId:TemperatureSetpoint1", "SetCurrentSetpoint", lul_settings, lul_device )
+            </run>
+        </action>
+    </actionList>
+</implementation>

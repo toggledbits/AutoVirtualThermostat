@@ -1,19 +1,19 @@
-# Virtual Thermostat #
+# Auto Virtual Thermostat #
 
 ## Introduction ##
 
-Virtual Thermostat is a plugin for for Vera home automation controllers that mimics the behavior of a standard heating/cooling
+Auto Virtual Thermostat is a plugin for for Vera home automation controllers that mimics the behavior of a standard heating/cooling
 thermostat, but uses a separate temperature sensor for its input, and controls switches for its output. It
 allows, for example, a space heater and window air conditioner to work like a typical HVAC system. When the
 temperature drops below the heating setpoint, the space heater's switch is turned on, until the sensor indicates that
 setpoint has been achieved, at which time the heater is turned off. If the temperature goes above the cooling 
 setpoint, the cooling unit's switch is turned on until the cooling setpoint is achieved.
 
-Virtual Thermostat has been tested on openLuup with AltUI.
+Auto Virtual Thermostat has been tested on openLuup with AltUI.
 
-Virtual Thermostat is written and supported by Patrick Rigney, aka rigpapa on the [Vera forums](http://http://forum.micasaverde.com/).
+Auto Virtual Thermostat is written and supported by Patrick Rigney, aka rigpapa on the [Vera forums](http://http://forum.micasaverde.com/).
 
-For more information, see <http://www.toggledbits.com/vt/>.
+For more information, see <http://www.toggledbits.com/avt/>.
 
 ## Reporting Bugs/Enhancement Requests ##
 
@@ -22,3 +22,10 @@ Bug reports and enhancement requests are welcome! Please use the "Issues" link f
 ## License ##
 
 SiteSensor is offered under GPL (the GNU Public License) 3.0. See the LICENSE file for details.
+
+## Disclaimer ##
+
+Auto Virtual Thermostat (AVT) is intended for controlling devices that are supervised by human operators only; it is not
+intended for unattended operation at any time. The failure modes of the Vera the devices used with it are too
+many and too complex, and in many cases it is not even possible for AVT to be aware of failures, or make
+an effective, safe response to a failure. Use of AVT is therefore entirely at your own risk.

@@ -195,7 +195,7 @@ var VirtualThermostat = (function(api) {
             html += '</div>';
             
             html += '<div class="clearfix"></div>';
-            html += '<div class="tb-about">Virtual Thermostat ver 1.0 2017-09-05 &#169; 2017 Patrick H. Rigney, All Rights Reserved.<br/>';
+            html += '<div class="tb-about">Virtual Thermostat ver 1.0 2017-09-09 &#169; 2017 Patrick H. Rigney, All Rights Reserved.<br/>';
             html += 'For documentation, support, and license information, please see <a href="http://www.toggledbits.com/vt/" target="_blank">http://www.toggledbits.com/vt/</a>';
             html += ' Your continued use of this software constitutes acceptance of and agreement to the terms of the license without limitation or exclusion.';
             html += ' CAUTION! This plugin is not to be used to control unattended devices!';

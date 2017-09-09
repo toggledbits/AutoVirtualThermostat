@@ -1030,7 +1030,7 @@ function plugin_init(dev)
         L("This plugin does not run on this firmware!")
         luup.variable_set( MYSID, "Failure", "1", dev )
         luup.set_failure( 1, dev )
-        return false
+        return false, "Unsupported system firmware", _PLUGIN_NAME
     end
 
     -- See if we need any one-time inits

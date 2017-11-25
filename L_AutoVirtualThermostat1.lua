@@ -155,7 +155,7 @@ local function deviceOnOff( targetDevice, state, vtDev )
     else
         targetId = tonumber(targetDevice,10)
     end
-    if targetId > 0 then
+    if targetId > 0 and luup.devices[targetId] ~= nil then
         local oldState = tonumber(luup.variable_get("urn:upnp-org:serviceId:SwitchPower1", "Status", targetId) or "0",10)
         if state then state=1 else state=0 end
         if luup.devices[targetId].device_type == "urn:schemas-upnp-org:device:VSwitch:1" then
@@ -769,7 +769,7 @@ end
 function varChanged( dev, sid, var, oldVal, newVal )
     D("varChanged(%1,%2,%3,%4,%5) luup.device is %6", dev, sid, var, oldVal, newVal, luup.device)
     assert(var ~= nil) -- nil if service or device watch (can happen on openLuup)
-    assert(luup.device ~= nil)
+    assert(luup.device ~= nil) -- fails on openLuup, have discussed with author but no fix forthcoming as of yet.
     if sid == FANMODE_SID then
         if var == "Mode" then
             local state = luup.variable_get(OPMODE_SID, "ModeStatus", luup.device) or "Off"
@@ -963,9 +963,17 @@ local function plugin_runOnce(dev)
     if (rev == 0) then
         -- Initialize for new installation
         D("runOnce() Performing first-time initialization!")
-        luup.variable_set(MYSID, "SetpointHeating", "72", dev)
-        luup.variable_set(MYSID, "SetpointCooling", "72", dev)
-        luup.variable_set(MYSID, "Differential", "1", dev)
+        if luup.attr_get("TemperatureFormat",0) == "C" then
+            luup.variable_set(MYSID, "SetpointHeating", "18", dev)
+            luup.variable_set(MYSID, "SetpointCooling", "24", dev)
+            luup.variable_set(MYSID, "Differential", "1", dev)
+            luup.variable_set(SETPOINT_SID, "CurrentSetpoint", "18", dev)
+        else
+            luup.variable_set(MYSID, "SetpointHeating", "64", dev)
+            luup.variable_set(MYSID, "SetpointCooling", "76", dev)
+            luup.variable_set(MYSID, "Differential", "1", dev)
+            luup.variable_set(SETPOINT_SID, "CurrentSetpoint", "18", dev)
+        end
         luup.variable_set(MYSID, "Interval", "60", dev)
         luup.variable_set(MYSID, "EquipmentDelay", "300", dev)
         luup.variable_set(MYSID, "FanOnDelayCooling", "0", dev)
@@ -998,7 +1006,6 @@ local function plugin_runOnce(dev)
         luup.variable_set(FANMODE_SID, "FanStatus", "Off", dev)
 
         luup.variable_set(SETPOINT_SID, "Application", "DualHeatingCooling", dev)
-        luup.variable_set(SETPOINT_SID, "CurrentSetpoint", "72", dev)
         luup.variable_set(SETPOINT_SID, "SetpointAchieved", "0", dev)
     end
 
@@ -1052,6 +1059,12 @@ function plugin_init(dev)
     coolOff(dev)
     
     -- Other inits
+    local units = luup.attr_get("TemperatureFormat", 0)
+    if units == "C" then    
+        -- Default temp 22, range 5 to 35
+    else
+        -- Default temp 72, range 45 to 95
+    end
     
     -- Watch some things, to make us quick to respond to changes.
     luup.variable_watch( "avtVarChanged", MYSID, "SetpointHeating", dev )

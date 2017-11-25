@@ -226,7 +226,6 @@ var AutoVirtualThermostat = (function(api) {
             jQuery("select.tempsensor").change( updateSelectedSensors );
             jQuery("i#addsensorbtn").click( function( ) {
                 var lastId = jQuery("div.sensorrow:last select").attr("id");
-                alert("last ID is " + lastId);
                 var ix = parseInt(lastId.substr(6)) + 1;
                 var newId = "sensor" + ix;
                 jQuery('div#sensorgroup').append('<div class="sensorrow clearfix"><label class="col-xs-2" for="' + newId 

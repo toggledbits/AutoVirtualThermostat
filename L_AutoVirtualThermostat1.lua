@@ -8,8 +8,8 @@
 module("L_AutoVirtualThermostat1", package.seeall)
 
 local _PLUGIN_NAME = "AutoVirtualThermostat"
-local _PLUGIN_VERSION = "1.0"
-local _CONFIGVERSION = 010000
+local _PLUGIN_VERSION = "1.1"
+local _CONFIGVERSION = 010100
 
 local MYSID = "urn:toggledbits-com:serviceId:AutoVirtualThermostat1"
 local MYTYPE = "urn:schemas-toggledbits-com:device:AutoVirtualThermostat:1"
@@ -20,11 +20,15 @@ local SETPOINT_SID = "urn:upnp-org:serviceId:TemperatureSetpoint1"
 local TEMPSENS_SID = "urn:upnp-org:serviceId:TemperatureSensor1"
 local HADEVICE_SID = "urn:micasaverde-com:serviceId:HaDevice1"
 
+local EMODE_NORMAL = "Normal"
+local EMODE_ECO = "EnergySavingsMode"
+
 local runStamp = {}
 local devTasks = {}
 local devLastOff = {}
 local devCycleStart = {}
 local devLockout = {}
+local sysTemps = { default=72, minimum=41, maximum=95 } 
 
 local debugMode = false
 
@@ -91,7 +95,7 @@ end
 
 local function D(msg, ...)
     if debugMode then
-        L({msg=msg,prefix=_PLUGIN_NAME.."(debug)::"}, ...)
+        L({msg=msg,prefix=_PLUGIN_NAME.."(debug)::"}, ... )
     end
 end
 
@@ -578,6 +582,12 @@ local function round(n)
     return math.floor(n+0.5)
 end
 
+local function constrain( val, valMin, valMax )
+    if valMin ~= nil and val < valMin then val = valMin end
+    if valMax ~= nil and val > valMax then val = valMax end
+    return val
+end
+
 local function checkSensors(dev)
     D("checkSensors(%1)", dev)
     -- Check sensor(s), get current temperature.
@@ -658,7 +668,7 @@ local function checkSensors(dev)
         luup.variable_set( OPMODE_SID, "ModeStatus", modeStatus, dev )
     end
     
-    local setpointTemp = getVarNumeric("CurrentSetpoint", 72, dev, SETPOINT_SID)
+    local setpointTemp = getVarNumeric("CurrentSetpoint", sysTemps.default, dev, SETPOINT_SID)
     local differential = getVarNumeric("Differential", 1.5, dev)
     
     -- Check schedule
@@ -666,8 +676,8 @@ local function checkSensors(dev)
     
     -- Check current operating mode.
     D("checkSensors() current state is %1, temp %2, differential %4", modeStatus, currentTemp, setpointTemp, differential)
-    local coolSP = getVarNumeric( "SetpointCooling", setpointTemp, dev )
-    local heatSP = getVarNumeric( "SetpointHeating", setpointTemp, dev )
+    local coolSP = getVarNumeric( "SetpointCooling", setpointTemp, dev, MYSID )
+    local heatSP = getVarNumeric( "SetpointHeating", setpointTemp, dev, MYSID )
     if modeStatus == "InDeadBand" or modeStatus == "Delayed" then
         -- Yes, even if we're delayed, we go through the motions.
         local modeTarget = luup.variable_get(OPMODE_SID, "ModeTarget", dev) or "Off"
@@ -809,6 +819,36 @@ function actionSetModeTarget( dev, newMode )
     return true
 end
 
+function actionSetEnergyModeTarget( dev, newMode )
+    D("actionSetEnergyModeTarget(%1,%2)", dev, newMode)
+    if newMode == nil then return false, "Invalid NewEnergyModeTarget" end
+    newMode = newMode:lower()
+    if newMode == "eco" or newMode == "economy" or newMode == "energysavingsmode" then newMode = EMODE_ECO
+    elseif newMode == "normal" or newMode == "comfort" then newMode = EMODE_NORMAL
+    else
+        -- Emulate the behavior of SVT by accepting 0/1 for Eco/Normal respectively.
+        newMode = tonumber( newMode, 10 )
+        if newMode == nil then return false, "Invalid NewEnergyModeTarget"
+        elseif newMode ~= 0 then newMode = EMODE_NORMAL
+        else newMode = EMODE_ECO
+        end
+    end
+    local currEmode = luup.variable_get( OPMODE_SID, "EnergyModeStatus", dev ) or ""
+    if currEmode == newMode then return true end -- No change in current mode
+    luup.variable_set( OPMODE_SID, "EnergyModeTarget", newMode, dev )
+    luup.variable_set( SETPOINT_SID, "SetpointAchieved", "0", dev )
+    if newMode ~= EMODE_ECO then
+        luup.variable_set( MYSID, "SetpointHeating", luup.variable_get( MYSID, "NormalHeatingSetpoint", dev ) or sysTemps.default, dev )
+        luup.variable_set( MYSID, "SetpointCooling", luup.variable_get( MYSID, "NormalCoolingSetpoint", dev ) or sysTemps.default, dev )
+    else
+        luup.variable_set( MYSID, "SetpointHeating", luup.variable_get( MYSID, "EcoHeatingSetpoint", dev ) or sysTemps.default, dev )
+        luup.variable_set( MYSID, "SetpointCooling", luup.variable_get( MYSID, "EcoCoolingSetpoint", dev ) or sysTemps.default, dev )
+    end
+    luup.variable_set( OPMODE_SID, "EnergyModeStatus", newMode, dev )
+    return true
+end
+
+-- Set fan operating mode.
 function actionSetFanMode( dev, newMode )
     D("actionSetFanMode(%1,%2)", dev, newMode)
     -- We just change the mode here; the variable trigger does the rest.
@@ -821,20 +861,40 @@ end
 
 -- Action to change current (TemperatureSetpoint1) Application
 function actionSetApplication( dev, app )
-    luup.variable_set( SETPOINT_SID, "Application", app, dev )
+    if string.match("DualHeatingCooling:Heating:Cooling:", app .. ":") then
+        luup.variable_set( SETPOINT_SID, "Application", app, dev )
+        return true
+    end
+    return false
+end
+
+-- Save current setpoints for the energy mode
+local function saveEnergyModeSetpoints( dev )
+    local currEmode = luup.variable_get( OPMODE_SID, "EnergyModeStatus", dev ) or EMODE_NORMAL
+    D("saveEnergyModeSetpoints(%1) saving setpoints for energy mode %2", dev, currEmode)
+    if currEmode ~= EMODE_ECO then
+        luup.variable_set( MYSID, "NormalHeatingSetpoint", luup.variable_get( MYSID, "SetpointHeating", dev), dev )
+        luup.variable_set( MYSID, "NormalCoolingSetpoint", luup.variable_get( MYSID, "SetpointCooling", dev), dev )
+    else
+        luup.variable_set( MYSID, "EcoHeatingSetpoint", luup.variable_get( MYSID, "SetpointHeating", dev), dev )
+        luup.variable_set( MYSID, "EcoCoolingSetpoint", luup.variable_get( MYSID, "SetpointCooling", dev), dev )
+    end
 end
 
 -- Action to change (TemperatureSetpoint1) setpoint.
-function actionSetCurrentSetpoint( dev, newSP )
+function actionSetCurrentSetpoint( dev, newSP, whichSP )
     D("actionSetCurrentSetpoint(%1,%2)", dev, newSP)
+
     newSP = tonumber(newSP, 10)
     if newSP == nil then return end
+    newSP = constrain( newSP, sysTemps.minimum, sysTemps.maximum )
+
+    if whichSP == nil then whichSP = luup.variable_get( SETPOINT_SID, "Application", dev ) or "DualHeatingCooling" end
     
-    local whichSP = luup.variable_get( SETPOINT_SID, "Application", dev ) or "DualHeatingCooling"
     local modeStatus = luup.variable_get( OPMODE_SID, "ModeStatus", dev ) or "Off"
     
-    local heatSP = getVarNumeric( "SetpointHeating", 72, dev, MYSID )
-    local coolSP = getVarNumeric( "SetpointCooling", 72, dev, MYSID )
+    local heatSP = getVarNumeric( "SetpointHeating", sysTemps.default, dev, MYSID )
+    local coolSP = getVarNumeric( "SetpointCooling", sysTemps.default, dev, MYSID )
     
     if whichSP == "DualHeatingCooling" then
         luup.variable_set( SETPOINT_SID, "CurrentSetpoint", newSP, dev )
@@ -859,6 +919,7 @@ function actionSetCurrentSetpoint( dev, newSP )
         end
         luup.variable_set( MYSID, "SetpointCooling", newSP, dev )
     end
+    saveEnergyModeSetpoints( dev )
     luup.variable_set( SETPOINT_SID, "SetpointAchieved", "0", dev )
 end
 
@@ -968,12 +1029,20 @@ local function plugin_runOnce(dev)
             luup.variable_set(MYSID, "SetpointCooling", "24", dev)
             luup.variable_set(MYSID, "Differential", "1", dev)
             luup.variable_set(SETPOINT_SID, "CurrentSetpoint", "18", dev)
+            luup.variable_set( MYSID, "EcoHeatingSetpoint", "13", dev )
+            luup.variable_set( MYSID, "EcoCoolingSetpoint", "29", dev )
+            luup.variable_set( MYSID, "ConfigurationUnits", "C", dev )
         else
             luup.variable_set(MYSID, "SetpointHeating", "64", dev)
             luup.variable_set(MYSID, "SetpointCooling", "76", dev)
             luup.variable_set(MYSID, "Differential", "1", dev)
-            luup.variable_set(SETPOINT_SID, "CurrentSetpoint", "18", dev)
+            luup.variable_set(SETPOINT_SID, "CurrentSetpoint", "64", dev)
+            luup.variable_set( MYSID, "EcoHeatingSetpoint", "55", dev )
+            luup.variable_set( MYSID, "EcoCoolingSetpoint", "85", dev )
+            luup.variable_set( MYSID, "ConfigurationUnits", "F", dev )
         end
+        luup.variable_set( MYSID, "NormalHeatingSetpoint", luup.variable_get( MYSID, "SetpointHeating", dev ), dev )
+        luup.variable_set( MYSID, "NormalCoolingSetpoint", luup.variable_get( MYSID, "SetpointCooling", dev ), dev )
         luup.variable_set(MYSID, "Interval", "60", dev)
         luup.variable_set(MYSID, "EquipmentDelay", "300", dev)
         luup.variable_set(MYSID, "FanOnDelayCooling", "0", dev)
@@ -998,8 +1067,8 @@ local function plugin_runOnce(dev)
 
         luup.variable_set(OPMODE_SID, "ModeTarget", "Off", dev)
         luup.variable_set(OPMODE_SID, "ModeStatus", "Off", dev)
-        luup.variable_set(OPMODE_SID, "EnergyModeTarget", "Normal", dev)
-        luup.variable_set(OPMODE_SID, "EnergyModeStatus", "Normal", dev)
+        luup.variable_set(OPMODE_SID, "EnergyModeTarget", EMODE_NORMAL, dev)
+        luup.variable_set(OPMODE_SID, "EnergyModeStatus", EMODE_NORMAL, dev)
         luup.variable_set(OPMODE_SID, "AutoMode", "1", dev)
 
         luup.variable_set(FANMODE_SID, "Mode", "Auto", dev)
@@ -1007,8 +1076,26 @@ local function plugin_runOnce(dev)
 
         luup.variable_set(SETPOINT_SID, "Application", "DualHeatingCooling", dev)
         luup.variable_set(SETPOINT_SID, "SetpointAchieved", "0", dev)
+        
+        luup.variable_set(MYSID, "Version", _CONFIGVERSION, dev)
+        return
     end
-
+    
+    if rev < 010100 then
+        D("runOnce() updating config for rev 010100")
+        luup.variable_set( MYSID, "NormalHeatingSetpoint", luup.variable_get( MYSID, "SetpointHeating", dev ), dev )
+        luup.variable_set( MYSID, "NormalCoolingSetpoint", luup.variable_get( MYSID, "SetpointCooling", dev ), dev )
+        if luup.attr_get("TemperatureFormat",0) == "C" then
+            luup.variable_set( MYSID, "EcoHeatingSetpoint", "13", dev )
+            luup.variable_set( MYSID, "EcoCoolingSetpoint", "29", dev )
+            luup.variable_set( MYSID, "ConfigurationUnits", "C", dev )
+        else
+            luup.variable_set( MYSID, "EcoHeatingSetpoint", "55", dev )
+            luup.variable_set( MYSID, "EcoCoolingSetpoint", "85", dev )
+            luup.variable_set( MYSID, "ConfigurationUnits", "F", dev )
+        end
+    end
+    
     -- No matter what happens above, if our versions don't match, force that here/now.
     if (rev ~= _CONFIGVERSION) then
         luup.variable_set(MYSID, "Version", _CONFIGVERSION, dev)
@@ -1062,8 +1149,15 @@ function plugin_init(dev)
     local units = luup.attr_get("TemperatureFormat", 0)
     if units == "C" then    
         -- Default temp 22, range 5 to 35
+        sysTemps = { default=22, minimum=5, maximum=35 }
     else
-        -- Default temp 72, range 45 to 95
+        -- Default temp 72, range 41 to 95
+        sysTemps = { default=72, minimum=41, maximum=95 }
+    end
+    local cfUnits = luup.variable_get( MYSID, "ConfigurationUnits", dev )
+    if cfUnits ~= units then
+        -- If system config doesn't match our config, stop. Potential danger.
+        return false, "System temp units changed", _PLUGIN_NAME
     end
     
     -- Watch some things, to make us quick to respond to changes.
@@ -1093,4 +1187,3 @@ end
 function getVersion()
     return _PLUGIN_VERSION, _PLUGIN_NAME, _CONFIGVERSION
 end
-

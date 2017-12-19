@@ -228,6 +228,75 @@
                     },
                     "ControlCode": "hvac_heat"
                 },
+                
+                
+                {
+                    "ControlGroup": "1",
+                    "ControlType": "line_break"
+                },
+                {
+                   "ControlGroup":"1",
+                   "ControlType":"multi_state_button",
+                   "top":"0",
+                   "left":"1",
+                   "Display":{
+                      "Top": 120,
+                      "Left": 460,
+                      "Width": 240,
+                      "Height": 96
+                   },
+                   "states":[
+                      {
+                         "Label":{
+                            "lang_tag":"ui7_hvac_normal",
+                            "text":"Comfort"
+                         },
+                         "ControlGroup":1,
+                         "Display":{
+                            "Service": "urn:upnp-org:serviceId:HVAC_UserOperatingMode1",
+                            "Variable": "EnergyModeStatus",
+                            "Value": "Normal"
+                         },
+                         "Command": {
+                            "Service": "urn:upnp-org:serviceId:HVAC_UserOperatingMode1",
+                            "Action": "SetEnergyModeTarget",
+                            "Parameters": [
+                               {
+                                  "Name": "NewEnergyModeTarget",
+                                  "Value": "Normal"
+                               }
+                            ]
+                         },
+                         "ControlCode":"hvac_emode_normal"
+                      },
+                      {
+                         "Label":{
+                            "lang_tag":"ui7_hvac_eco",
+                            "text": "Economy"
+                         },
+                         "ControlGroup":1,
+                         "Display":{
+                            "Service": "urn:upnp-org:serviceId:HVAC_UserOperatingMode1",
+                            "Variable": "EnergyModeStatus",
+                            "Value":"EnergySavingsMode"
+                         },
+                         "Command": {
+                            "Service": "urn:upnp-org:serviceId:HVAC_UserOperatingMode1",
+                            "Action": "SetEnergyModeTarget",
+                            "Parameters": [
+                               {
+                                  "Name": "NewEnergyModeTarget",
+                                  "Value": "EnergySavingsMode"
+                               }
+                            ]
+                         },
+                         "ControlCode":"hvac_emode_eco"
+                      }
+                   ]
+                },
+                
+                
+                
                 {
                     "ControlGroup": "2",
                     "ControlType": "slider_vertical",

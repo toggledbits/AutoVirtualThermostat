@@ -44,6 +44,28 @@
                 -- Luup takes care of returning relatedStateVariable
             </run>
         </action>
+		<action>
+			<serviceId>urn:upnp-org:serviceId:HVAC_UserOperatingMode1</serviceId>
+			<name>SetEnergyModeTarget</name>
+			<run>
+                local newMode = lul_settings.NewEnergyModeTarget
+                AutoVirtualThermostat.actionSetEnergyModeTarget( lul_device, newMode )
+			</run>
+		</action>
+        <action>
+            <serviceId>urn:upnp-org:serviceId:HVAC_UserOperatingMode1</serviceId>
+            <name>GetEnergyModeTarget</name>
+            <run>
+                -- Luup takes care of returning relatedStateVariable
+            </run>
+        </action>
+        <action>
+            <serviceId>urn:upnp-org:serviceId:HVAC_UserOperatingMode1</serviceId>
+            <name>GetEnergyModeStatus</name>
+            <run>
+                -- Luup takes care of returning relatedStateVariable
+            </run>
+        </action>
         <action>
             <serviceId>urn:upnp-org:serviceId:HVAC_FanOperatingMode1</serviceId>
             <name>SetMode</name>
@@ -80,8 +102,9 @@
             <serviceId>urn:upnp-org:serviceId:TemperatureSetpoint1</serviceId>
             <name>SetCurrentSetpoint</name>
             <run>
-                -- Set temperature setpoint. Semantics of this on dual-mode thermostats are plus on.
+                -- Set temperature setpoint. Semantics of this on dual-mode thermostats depends on setting of Application.
                 -- See http://upnp.org/specs/ha/UPnP-ha-TemperatureSetpoint-v1-Service.pdf
+                -- N.B. Should not be called without calling SetApplication first!
                 AutoVirtualThermostat.actionSetCurrentSetpoint( lul_device, lul_settings.NewCurrentSetpoint )
             </run>
         </action>
@@ -90,6 +113,7 @@
             <name>GetCurrentSetpoint</name>
             <run>
                 -- Get current setpoint. Take Application into account.
+                -- N.B. Should not be called without calling SetApplication first!
                 local app = luup.variable_get( "urn:upnp-org:serviceId:TemperatureSetpoint1", "Application", lul_device ) or "DualHeatingCooling"
                 if app == "Heating" then
                     luup.variable_set( "urn:upnp-org:serviceId:TemperatureSetpoint1", "CurrentSetpoint", 
@@ -103,13 +127,62 @@
             </run>
         </action>
         <action>
+            <serviceId>urn:upnp-org:serviceId:TemperatureSetpoint1_Heat</serviceId>
+            <name>SetCurrentSetpoint</name>
+            <run>
+                -- Set temperature setpoint for heating (convenience function to mimic other devices, but this is incompletely defined).
+                AutoVirtualThermostat.actionSetCurrentSetpoint( lul_device, lul_settings.NewCurrentSetpoint, "Heating" )
+            </run>
+        </action>
+        <action>
+            <serviceId>urn:upnp-org:serviceId:TemperatureSetpoint1_Heat</serviceId>
+            <name>GetCurrentSetpoint</name>
+            <run>
+                -- Get temperature setpoint for heating (convenience function to mimic other devices, but this is incompletely defined).
+                local currSP = luup.variable_get( "urn:toggledbits-com:serviceId:AutoVirtualThermostat1", "SetpointHeating", lul_device )
+                -- Force value of CurrentSetpoint, because it's the "relatedStateVariable" as defined in S_.xml
+                luup.variable_set( "urn:upnp-org:serviceId:TemperatureSetpoint1", "CurrentSetpoint", currSP, lul_device )
+                -- Don't REALLY need this, because Luup seems to fetch and return the value on its own (via relatedStateVariable in S_).
+                return currSP
+            </run>
+        </action>
+        <action>
+            <serviceId>urn:upnp-org:serviceId:TemperatureSetpoint1_Cool</serviceId>
+            <name>SetCurrentSetpoint</name>
+            <run>
+                -- Set temperature setpoint for cooling (convenience function to mimic other devices, but this is incompletely defined).
+                AutoVirtualThermostat.actionSetCurrentSetpoint( lul_device, lul_settings.NewCurrentSetpoint, "Cooling" )
+            </run>
+        </action>
+        <action>
+            <serviceId>urn:upnp-org:serviceId:TemperatureSetpoint1_Cool</serviceId>
+            <name>GetCurrentSetpoint</name>
+            <run>
+                -- Get temperature setpoint for cooling (convenience function to mimic other devices, but this is incompletely defined).
+                local currSP = luup.variable_get( "urn:toggledbits-com:serviceId:AutoVirtualThermostat1", "SetpointCooling", lul_device )
+                -- Force value of CurrentSetpoint, because it's the "relatedStateVariable" as defined in S_.xml
+                luup.variable_set( "urn:upnp-org:serviceId:TemperatureSetpoint1", "CurrentSetpoint", currSP, lul_device )
+                -- Don't REALLY need this, because Luup seems to fetch and return the value on its own (via relatedStateVariable in S_).
+                return currSP
+            </run>
+        </action>
+        <action>
             <serviceId>urn:toggledbits-com:serviceId:AutoVirtualThermostat1</serviceId>
             <name>SetCurrentSetpoint</name>
             <run>
                 -- Set heating/cooling/dual setpoint. Goes through UPnP TemperatureSetpoint1, so we need to set application. See above.
                 local app = lul_settings.Application or "DualHeatingCooling"
+                AutoVirtualThermostat.actionSetCurrentSetpoint( lul_device, lul_settings.NewCurrentSetpoint, app )
+            </run>
+        </action>
+        <action>
+            <serviceId>urn:toggledbits-com:serviceId:AutoVirtualThermostat1</serviceId>
+            <name>GetCurrentSetpoint</name>
+            <run>
+                -- Set heating/cooling/dual setpoint. Goes through UPnP TemperatureSetpoint1, so we need to set application. See above.
+                local app = lul_settings.Application or "DualHeatingCooling"
                 luup.call_action( "urn:upnp-org:serviceId:TemperatureSetpoint1", "SetApplication", { NewApplication=app }, lul_device )
-                luup.call_action( "urn:upnp-org:serviceId:TemperatureSetpoint1", "SetCurrentSetpoint", lul_settings, lul_device )
+                luup.call_action( "urn:upnp-org:serviceId:TemperatureSetpoint1", "GetCurrentSetpoint", lul_settings, lul_device ) -- call other service, pass all
             </run>
         </action>
     </actionList>

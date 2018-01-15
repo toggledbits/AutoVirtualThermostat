@@ -602,28 +602,32 @@ local function checkSensors(dev)
     local maxSensorDelay = getVarNumeric( "MaxSensorDelay", 3600, dev )
     local maxSensorBattery = getVarNumeric( "MaxSensorBattery", 7200, dev )
     for _,ts in ipairs(tst) do
-        local tnum = tonumber(ts,10) or 0
-        local since = getVarNumeric( "LastUpdate", 0, tnum, HADEVICE_SID )
-        local batt = getVarNumeric( "BatteryDate", nil, tnum, HADEVICE_SID )
-        if batt == nil and luup.devices[tnum] and luup.devices[tnum].device_num_parent then
-            batt = getVarNumeric( "BatteryDate", nil, luup.devices[tnum].device_num_parent, HADEVICE_SID )
-        end
-        if tnum == 0 then
-            L("Sensor %1 ignored, problem with device ID", ts)
-        elseif maxSensorDelay > 0 and ((now-since) > maxSensorDelay) then
-            L("Sensor %1 (%2) ineligible, last update %3 is more than %4 ago", ts, luup.devices[tnum].description, since, maxSensorDelay)
-        elseif maxSensorBattery > 0 and batt ~= nil and ((now-batt) > maxSensorBattery) then
-            L("Sensor %1 (%2) ineligible, last battery report %3 is more than %4 ago", ts, luup.devices[tnum].description, batt, maxSensorBattery)
-        else
-            local temp = tonumber(luup.variable_get( TEMPSENS_SID, "CurrentTemperature", tnum ), 10)
-            if temp ~= nil then
-                -- Sanity check temp range and battery level
-                D("checkSensors() sensor %1 (%2) sinceLastUpdate=%3, battery=%4, valid temp reported=%5", ts, luup.devices[tnum].description, since, batt, temp)
-                currentTemp = currentTemp + temp
-                tempCount = tempCount + 1
-            else
-                L("Sensor %1 (%2) is not providing temperature, ignoring", ts, luup.devices[tnum].description)
+        local tnum = tonumber(ts,10)
+        if tnum ~= nil and luup.devices[tnum] ~= nil then
+            local temp, since
+            temp,since = luup.variable_get( TEMPSENS_SID, "CurrentTemperature", tnum )
+            temp = tonumber(temp,10)
+            since = tonumber(since,10) or 0
+            local batt = getVarNumeric( "BatteryDate", nil, tnum, HADEVICE_SID )
+            if batt == nil and luup.devices[tnum].device_num_parent then
+                batt = getVarNumeric( "BatteryDate", nil, luup.devices[tnum].device_num_parent, HADEVICE_SID )
             end
+            if maxSensorDelay > 0 and ((now-since) > maxSensorDelay) then
+                L("Sensor %1 (%2) ineligible, last update %3 is more than %4 ago", ts, luup.devices[tnum].description, since, maxSensorDelay)
+            elseif maxSensorBattery > 0 and batt ~= nil and ((now-batt) > maxSensorBattery) then
+                L("Sensor %1 (%2) ineligible, last battery report %3 is more than %4 ago", ts, luup.devices[tnum].description, batt, maxSensorBattery)
+            else
+                if temp ~= nil then
+                    -- Sanity check temp range and battery level
+                    D("checkSensors() sensor %1 (%2) sinceLastUpdate=%3, battery=%4, valid temp reported=%5", ts, luup.devices[tnum].description, since, batt, temp)
+                    currentTemp = currentTemp + temp
+                    tempCount = tempCount + 1
+                else
+                    L("Sensor %1 (%2) is not providing temperature, ignoring", ts, luup.devices[tnum].description)
+                end
+            end
+        else
+            L("Sensor %1 ignored, device not found")
         end
     end
     D("checkSensors() TempSensors=%1, valid sensors=%2, total=%3", tst, tempCount, currentTemp)

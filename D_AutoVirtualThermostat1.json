@@ -328,14 +328,11 @@
                         "Height": 20
                     },
                     "Command": {
-                        "Service": "urn:toggledbits-com:serviceId:AutoVirtualThermostat1",
+                        "Service": "urn:upnp-org:serviceId:TemperatureSetpoint1_Heat",
                         "Action": "SetCurrentSetpoint",
                         "Parameters": [{
                             "Name": "NewCurrentSetpoint",
                             "ID": "NewCurrentSetpointHeat"
-                        }, {
-                            "Name": "Application",
-                            "Value": "Heating"
                         }]
                     },
                     "ControlCode": "heating_setpoint"
@@ -371,14 +368,11 @@
                         "Height": 20
                     },
                     "Command": {
-                        "Service": "urn:toggledbits-com:serviceId:AutoVirtualThermostat1",
+                        "Service": "urn:upnp-org:serviceId:TemperatureSetpoint1_Cool",
                         "Action": "SetCurrentSetpoint",
                         "Parameters": [{
                             "Name": "NewCurrentSetpoint",
                             "ID": "NewCurrentSetpointCool"
-                        }, {
-                            "Name": "Application",
-                            "Value": "Cooling"
                         }]
                     },
                     "ControlCode": "cooling_setpoint"

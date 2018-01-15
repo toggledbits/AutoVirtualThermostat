@@ -13,6 +13,9 @@ Auto Virtual Thermostat has been tested on openLuup with AltUI.
 
 Auto Virtual Thermostat is written and supported by Patrick Rigney, aka rigpapa on the [Vera forums](http://http://forum.micasaverde.com/).
 
+Please consider supporting AVT and my other projects by making either
+[a one-time &ldquo;tip&rdquo; or monthly $1 donation](https://www.makersupport.com/toggledbits).
+
 For more information, see <http://www.toggledbits.com/avt/>.
 
 ## Reporting Bugs/Enhancement Requests ##

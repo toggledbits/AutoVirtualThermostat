@@ -1,52 +1,52 @@
 {
-    "default_icon": "https://www.toggledbits.com/avt/assets/vt_mode_off.png",
+    "default_icon": "http://www.toggledbits.com/avt/assets/vt_mode_auto.png",
     "state_icons": [{
-            "img": "https://www.toggledbits.com/avt/assets/vt_attn.png",
+            "img": "http://www.toggledbits.com/avt/assets/vt_attn.png",
             "conditions": [{
                 "service": "urn:toggledbits-com:serviceId:AutoVirtualThermostat1",
                 "variable": "Failure",
                 "operator": "!=",
                 "value": "0",
-                "subcategory_num": 1
+                "subcategory_num": 0
             }]
         },
         {
-            "img": "https://www.toggledbits.com/avt/assets/vt_mode_heating.png",
+            "img": "http://www.toggledbits.com/avt/assets/vt_mode_heating.png",
             "conditions": [{
-                "service": "urn:micasaverde-com:serviceId:HVAC_OperatingState1",
-                "variable": "ModeState",
+                "service": "urn:upnp-org:serviceId:HVAC_UserOperatingMode1",
+                "variable": "ModeStatus",
                 "operator": "==",
-                "value": "Heating",
-                "subcategory_num": 1
+                "value": "HeatOn",
+                "subcategory_num": 0
             }]
         },
         {
-            "img": "https://www.toggledbits.com/avt/assets/vt_mode_cooling.png",
+            "img": "http://www.toggledbits.com/avt/assets/vt_mode_cooling.png",
             "conditions": [{
-                "service": "urn:micasaverde-com:serviceId:HVAC_OperatingState1",
-                "variable": "ModeState",
+                "service": "urn:upnp-org:serviceId:HVAC_UserOperatingMode1",
+                "variable": "ModeStatus",
                 "operator": "==",
-                "value": "Cooling",
-                "subcategory_num": 1
+                "value": "CoolOn",
+                "subcategory_num": 0
             }]
         },
         {
-            "img": "https://www.toggledbits.com/avt/assets/vt_mode_auto.png",
+            "img": "http://www.toggledbits.com/avt/assets/vt_mode_off.png",
             "conditions": [{
-                "service": "urn:micasaverde-com:serviceId:HVAC_OperatingState1",
-                "variable": "ModeState",
+                "service": "urn:upnp-org:serviceId:HVAC_UserOperatingMode1",
+                "variable": "ModeStatus",
                 "operator": "==",
-                "value": "FanOnly",
-                "subcategory_num": 1
+                "value": "Off",
+                "subcategory_num": 0
             }]
         }
     ],
-    "x": "4",
+    "x": "2",
     "y": "4",
     "inScene": "1",
     "Tabs": [{
             "Label": {
-                "lang_tag": "ui7_tabname_control",
+                "lang_tag": "tabname_control",
                 "text": "Control"
             },
             "Position": "0",
@@ -104,7 +104,7 @@
                     "left": "0",
                     "Label": {
                         "lang_tag": "thermostat",
-                        "text": "Auto Virtual Thermostat"
+                        "text": "Simple Virtual Thermostat"
                     },
                     "Display": {
                         "Top": 8,
@@ -992,5 +992,5 @@
             }
         }
     ],
-    "device_type": "urn:schemas-upnp-org:device:HVAC_ZoneThermostat:1"
+    "device_type": "urn:schemas-toggledbits-com:device:AutoVirtualThermostat:1"
 }

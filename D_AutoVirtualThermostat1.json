@@ -1,7 +1,7 @@
 {
-    "default_icon": "http://www.toggledbits.com/avt/assets/vt_mode_auto.png",
+    "default_icon": "https://www.toggledbits.com/avt/assets/vt_mode_auto.png",
     "state_icons": [{
-            "img": "http://www.toggledbits.com/avt/assets/vt_attn.png",
+            "img": "https://www.toggledbits.com/avt/assets/vt_attn.png",
             "conditions": [{
                 "service": "urn:toggledbits-com:serviceId:AutoVirtualThermostat1",
                 "variable": "Failure",
@@ -11,7 +11,7 @@
             }]
         },
         {
-            "img": "http://www.toggledbits.com/avt/assets/vt_mode_heating.png",
+            "img": "https://www.toggledbits.com/avt/assets/vt_mode_heating.png",
             "conditions": [{
                 "service": "urn:upnp-org:serviceId:HVAC_UserOperatingMode1",
                 "variable": "ModeStatus",
@@ -21,7 +21,7 @@
             }]
         },
         {
-            "img": "http://www.toggledbits.com/avt/assets/vt_mode_cooling.png",
+            "img": "https://www.toggledbits.com/avt/assets/vt_mode_cooling.png",
             "conditions": [{
                 "service": "urn:upnp-org:serviceId:HVAC_UserOperatingMode1",
                 "variable": "ModeStatus",
@@ -31,7 +31,7 @@
             }]
         },
         {
-            "img": "http://www.toggledbits.com/avt/assets/vt_mode_off.png",
+            "img": "https://www.toggledbits.com/avt/assets/vt_mode_off.png",
             "conditions": [{
                 "service": "urn:upnp-org:serviceId:HVAC_UserOperatingMode1",
                 "variable": "ModeStatus",

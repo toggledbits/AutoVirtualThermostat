@@ -11,10 +11,15 @@ local _PLUGIN_NAME = "AutoVirtualThermostat"
 local _PLUGIN_VERSION = "1.1"
 local _CONFIGVERSION = 010100
 
+local debugMode = true
+
+local SYSTYPE = "urn:schemas-upnp-org:device:HVAC_ZoneThermostat:1"
+
 local MYSID = "urn:toggledbits-com:serviceId:AutoVirtualThermostat1"
 local MYTYPE = "urn:schemas-toggledbits-com:device:AutoVirtualThermostat:1"
 
 local OPMODE_SID = "urn:upnp-org:serviceId:HVAC_UserOperatingMode1"
+local OPSTATE_SID = "urn:micasaverde-com:serviceId:HVAC_OperatingState1"
 local FANMODE_SID = "urn:upnp-org:serviceId:HVAC_FanOperatingMode1"
 local SETPOINT_SID = "urn:upnp-org:serviceId:TemperatureSetpoint1"
 local TEMPSENS_SID = "urn:upnp-org:serviceId:TemperatureSensor1"
@@ -28,9 +33,7 @@ local devTasks = {}
 local devLastOff = {}
 local devCycleStart = {}
 local devLockout = {}
-local sysTemps = { default=72, minimum=41, maximum=95 } 
-
-local debugMode = false
+local sysTemps = { default=72, minimum=41, maximum=95 }
 
 local isALTUI = false
 local isOpenLuup = false
@@ -50,7 +53,7 @@ local function dump(t)
         elseif type(v) == "number" then
             local d = v - os.time()
             if d < 0 then d = -d end
-            if d <= 86400 then 
+            if d <= 86400 then
                 val = string.format("%d (%s)", v, os.date("%X", v))
             else
                 val = tostring(v)
@@ -83,7 +86,7 @@ local function L(msg, ...)
             elseif type(val) == "number" then
                 local d = val - os.time()
                 if d < 0 then d = -d end
-                if d <= 86400 then 
+                if d <= 86400 then
                     val = string.format("%d (time %s)", val, os.date("%X", val))
                 end
             end
@@ -233,19 +236,19 @@ local function insertTask( pdev, t )
         lt = lt.next
     end
     t.next = lt
-    if pt == nil then 
+    if pt == nil then
         devTasks[pdev] = t
-    else 
+    else
         pt.next = t
     end
     D("insertTask() head is now %1", devTasks[pdev])
 end
 
--- Insert and schedule a task. 
+-- Insert and schedule a task.
 local function scheduleTask( pdev, taskObj )
     D("scheduleTask(%1,%2)", pdev, taskObj)
     assert(type(taskObj) == "table")
-    
+
     local soonest = nil
     if devTasks[pdev] ~= nil then soonest = devTasks[pdev].time end
 
@@ -306,7 +309,7 @@ function runTask(p)
         D("runTask() stamp mismatch (got %1, expected %2). Newer thread running! I'm out...", stepStamp, runStamp[pdev])
         return
     end
-    
+
     -- Check tasks, run as needed. Remove as we run them, unless recurring.
     local k,v
     while devTasks[pdev] ~= nil and devTasks[pdev].time <= os.time() do
@@ -321,14 +324,14 @@ function runTask(p)
             local s = string.format("return %s(%d,%d)", t.func, t.dev, pdev)
             D("runTask() building func call from string %1", s)
             f = loadstring(s)
-        else 
+        else
             f = t.func
         end
         status, err = pcall( f, t.dev or pdev, pdev )
         if not status then
             D("Task %1 by %3 failed, %2", t.type, err, t.caller)
         end
-        
+
         -- If recurring, put it back in the queue
         if t.recurring then
             assert(t.recurring > 0)
@@ -346,18 +349,18 @@ function runTask(p)
     end
 end
 
-local statusMap = { ['HeatOn']="Heating", ['CoolOn']="Cooling", ['InDeadBand']="Idle" }
+stateMap = { FanOnly='Fan Only' }
 local function updateDisplayStatus( dev )
     D("updateDisplayStatus(%1)", dev)
-    local modeStatus = luup.variable_get( OPMODE_SID, "ModeStatus", dev )
-    local fanStatus = luup.variable_get( FANMODE_SID, "FanStatus", dev )
-    if statusMap[modeStatus] then
-        modeStatus = statusMap[modeStatus]
+    local currState = luup.variable_get( OPSTATE_SID, "ModeState", dev ) or "Idle"
+    local fanStatus = luup.variable_get( FANMODE_SID, "FanStatus", dev ) or "Off"
+    if stateMap[currState] then
+        currState = stateMap[currState]
     end
-    if modeStatus == "Idle" and fanStatus == "On" then
-        modeStatus = "Fan Only"
+    if currState == "Idle" and fanStatus == "On" then
+        currMode = "Fan Only"
     end
-    luup.variable_set( MYSID, "DisplayStatus", modeStatus, dev )
+    luup.variable_set( MYSID, "DisplayStatus", currMode, dev )
 end
 
 local function markCycle(dev)
@@ -385,11 +388,12 @@ end
 local fanPeriodicOff = function(dev) end -- temporary forward declaration
 local function fanPeriodicOn(dev)
     D("fanPeriodicOn(%1)", dev)
-    local currentState = luup.variable_get(OPMODE_SID, "ModeStatus", dev) or "Off"
-    if currentState == "InDeadBand" then
+    local currentState = luup.variable_get(OPSTATE_SID, "ModeState", dev) or "Idle"
+    if currentState == "Idle" then
         -- Run for 15 minutes
         local runTime = limit( getVarNumeric( "FanCycleMinsPerHr", 15, dev ), 1, 59 )
         fanOn(dev)
+        luup.variable_set( OPSTATE_SID, "ModeState", "FanOnly", dev )
         scheduleTask( dev, { ['type']='fan', func=fanPeriodicOff, dev=dev, ['time']=os.time()+(runTime*60) } )
     end
 end
@@ -397,11 +401,13 @@ end
 -- Stop periodic fan
 fanPeriodicOff = function(dev) -- redeclaration (forward above)
     D("fanPeriodicOff(%1)", dev)
-    local currentState = luup.variable_get(OPMODE_SID, "ModeStatus", dev) or "Off"
-    if currentState == "InDeadBand" or currentState == "Off" then
+    local currentState = luup.variable_get(OPSTATE_SID, "ModeState", dev) or "Idle"
+    if currentState == "FanOnly" then
         fanOff(dev)
+        currentState = "Idle"
+        luup.variable_set( OPSTATE_SID, "ModeState", currentState, dev )
     end
-    if currentState == "InDeadBand" then
+    if currentState == "Idle" then
         local runTime = limit( getVarNumeric( "FanCycleMinsPerHr", 15, dev ), 1, 59 )
         scheduleTask( dev, { ['type']='fan', func=fanPeriodicOn, dev=dev, ['time']=os.time()+((60-runTime)*60) } )
     end
@@ -421,17 +427,6 @@ local function fanAutoOff(dev)
     updateDisplayStatus(dev)
 end
 
--- Set ModeStatus to something appropriate for target when we're doing nothing.
-local function setIdleModeStatus(dev)
-    local targetMode = luup.variable_get( OPMODE_SID, "ModeTarget", dev ) or "Off"
-    local nextStatus = "InDeadBand"
-    if targetMode == "Off" then
-        nextStatus = "Off"
-    end
-    luup.variable_set(OPMODE_SID, "ModeStatus", nextStatus, dev)
-    return nextStatus
-end        
-
 -- Turn the heat off.
 local function heatOff(dev)
     D("heatOff(%1)", dev)
@@ -444,7 +439,7 @@ local function heatOff(dev)
         L("End heating cycle, %1 minutes %2 seconds", math.floor(runTime/60), runTime % 60)
     end
     devCycleStart[dev] = 0
-    setIdleModeStatus(dev)
+    luup.variable_set( OPSTATE_SID, "ModeState", "FanOnly", dev )
     local fanDelay = getVarNumeric( "FanOffDelayHeating", 60, dev )
     scheduleTask( dev, { ['type']="fan", func=fanAutoOff, dev=dev, ['time']=os.time()+fanDelay } )
 end
@@ -461,20 +456,20 @@ local function coolOff(dev)
         L("End cooling cycle, %1 minutes %2 seconds", math.floor(runTime/60), runTime % 60)
     end
     devCycleStart[dev] = 0
-    setIdleModeStatus(dev)
+    luup.variable_set( OPSTATE_SID, "ModeState", "FanOnly", dev )
     local fanDelay = getVarNumeric( "FanOffDelayCooling", 60, dev )
     scheduleTask( dev, { ['type']="fan", func=fanAutoOff, dev=dev, ['time']=os.time()+fanDelay } )
 end
 
 local function goIdle( dev, currState )
     D("goIdle(%1,%2)", dev, currState)
-    if currState == nil then currState = luup.variable_get( OPMODE_SID, "ModeStatus", dev ) or "Off" end
-    if currState == "CoolOn" then
+    if currState == nil then currState = luup.variable_get( OPSTATE_SID, "ModeState", dev ) or "Idle" end
+    if currState == "Cooling" then
         coolOff(dev)
-    elseif currState == "HeatOn" then  
+    elseif currState == "Heating" then
         heatOff(dev)
     end
-end    
+end
 
 local function taskIdle( dev, pdev )
     goIdle(pdev)
@@ -493,22 +488,22 @@ local function callHeat(dev)
     local now = os.time()
     if devLastOff[dev].heating == nil then devLastOff[dev].heating = now end
     local equipDelay = devLastOff[dev].heating + getVarNumeric("EquipmentDelay", 300, dev)
-    if equipDelay > now then 
+    if equipDelay > now then
         L("Call for heating delayed by equipment delay")
-        luup.variable_set(OPMODE_SID, "ModeStatus", "Delayed", dev)
+        luup.variable_set(OPSTATE_SID, "ModeState", "Delayed", dev)
         rescheduleTask(dev, "sense", equipDelay)
-        return false 
+        return false
     end
 
     L("Heating!")
-    luup.variable_set(OPMODE_SID, "ModeStatus", "HeatOn", dev)
+    luup.variable_set(OPSTATE_SID, "ModeState", "Heating", dev)
 
     local delay = getVarNumeric( "FanOnDelayHeating", 0, dev )
     if delay < 0 then
         -- If delay < 0, then start heating first, then fan
         scheduleTask( dev, { ['type']="heat", func=heatOn, dev=dev } )
         scheduleTask( dev, { ['type']="fan", func=fanOn, dev=dev, ['time']=now-delay } )
-    else    
+    else
         -- Normal delay, fan first, then heater
         scheduleTask( dev, { ['type']="fan", func=fanOn, dev=dev } )
         scheduleTask( dev, { ['type']="heat", func=heatOn, dev=dev, ['time']=now+delay } )
@@ -529,16 +524,16 @@ local function callCool(dev)
     local now = os.time()
     if devLastOff[dev].cooling == nil then devLastOff[dev].cooling = now end
     local equipDelay = devLastOff[dev].cooling + getVarNumeric("EquipmentDelay", 300, dev)
-    if equipDelay > now then 
+    if equipDelay > now then
         L("Call for cooling delayed by equipment delay")
-        luup.variable_set(OPMODE_SID, "ModeStatus", "Delayed", dev)
+        luup.variable_set(OPSTATE_SID, "ModeState", "Delayed", dev)
         rescheduleTask(dev, "sense", equipDelay)
-        return false 
+        return false
     end
 
     L("Cooling!")
-    luup.variable_set(OPMODE_SID, "ModeStatus", "CoolOn", dev)
-    
+    luup.variable_set(OPSTATE_SID, "ModeState", "Cooling", dev)
+
     local delay = getVarNumeric( "FanOnDelayCooling", 0, dev )
     if delay < 0 then
         -- If delay < 0, then start cooling first, then fan
@@ -568,12 +563,7 @@ local function checkSchedule(dev)
     elseif now >= schedStart and now < schedEnd then
         return true
     end
-    local ms = luup.variable_get( OPMODE_SID, "ModeStatus", dev )
-    if ms == "CoolOn" then
-        coolOff(dev)
-    elseif ms == "HeatOn" then
-        heatOff(dev)
-    end
+    goIdle( dev )
     return false
 end
 
@@ -593,7 +583,8 @@ local function checkSensors(dev)
     -- Check sensor(s), get current temperature.
     dev = tonumber(dev,10)
     assert(dev ~= nil)
-    local modeStatus = luup.variable_get(OPMODE_SID, "ModeStatus", dev) or "Off"
+    local currMode = luup.variable_get(OPMODE_SID, "ModeStatus", dev) or "Off"
+    local currState = luup.variable_get(OPSTATE_SID, "ModeState", dev) or "Idle"
     local currentTemp = 0
     local ts = luup.variable_get(MYSID, "TempSensors", dev) or ""
     local tst = split(ts)
@@ -633,13 +624,13 @@ local function checkSensors(dev)
     D("checkSensors() TempSensors=%1, valid sensors=%2, total=%3", tst, tempCount, currentTemp)
     if debugMode then
         local testTemp = getVarNumeric("TestTemp", 0, dev)
-        if testTemp > 0 then 
-            if modeStatus == "CoolOn" then
+        if testTemp > 0 then
+            if currMode == "CoolOn" then
                 testTemp = testTemp - 0.2
-            elseif modeStatus == "HeatOn" then
+            elseif currMode == "HeatOn" then
                 testTemp = testTemp + 0.2
             end
-            currentTemp = testTemp 
+            currentTemp = testTemp
             tempCount = 1
             luup.variable_set(MYSID, "TestTemp", string.format("%.2f", testTemp), dev)
         end
@@ -662,55 +653,59 @@ local function checkSensors(dev)
     -- Check for lockout
     if devLockout[dev] > 0 then
         if now < devLockout[dev] then
+            luup.variable_set( OPSTATE_SID, "ModeState", "Lockout", dev )
             L("checkSensors() lockout in effect, %1 seconds to go...", devLockout[dev] - os.time())
             scheduleTask( dev, { ['type']='goidle', func=taskIdle, dev=dev } )
             return
         end
-        L("checkSensors() restoring from lockout")
+        L("Restoring from lockout")
         devLockout[dev] = 0
-        modeStatus = "InDeadBand"
-        luup.variable_set( OPMODE_SID, "ModeStatus", modeStatus, dev )
+        currState = "Idle"
+        luup.variable_set( OPSTATE_SID, "ModeState", currState, dev )
     end
-    
+
     local setpointTemp = getVarNumeric("CurrentSetpoint", sysTemps.default, dev, SETPOINT_SID)
-    local differential = getVarNumeric("Differential", 1.5, dev)
-    
+    local differential = getVarNumeric("Differential", 1.5, dev, MYSID)
+
     -- Check schedule
     if not checkSchedule( dev ) then return end
-    
+
     -- Check current operating mode.
-    D("checkSensors() current state is %1, temp %2, differential %4", modeStatus, currentTemp, setpointTemp, differential)
+    D("checkSensors() current mode %1 state is %2, temp %3, differential %4", currMode, currState, currentTemp, differential)
     local coolSP = getVarNumeric( "SetpointCooling", setpointTemp, dev, MYSID )
     local heatSP = getVarNumeric( "SetpointHeating", setpointTemp, dev, MYSID )
-    if modeStatus == "InDeadBand" or modeStatus == "Delayed" then
+    if string.find("Idle:FanOnly:Delayed", currState) then
         -- Yes, even if we're delayed, we go through the motions.
-        local modeTarget = luup.variable_get(OPMODE_SID, "ModeTarget", dev) or "Off"
-        D("checkSensors() effective mode is %1, setpoints H=%2,C=%3, diff %3", modeTarget, heatSP, coolSP, differential)
-        if (modeTarget == "AutoChangeOver" or modeTarget == "CoolOn") and (currentTemp >= (coolSP+differential)) then
+        D("checkSensors() mode is %1, setpoints H=%2,C=%3, diff %3", currMode, heatSP, coolSP, differential)
+        if string.find("CoolOn:AutoChangeOver", currMode) and (currentTemp >= (coolSP+differential)) then
             luup.variable_set( SETPOINT_SID, "SetpointAchieved", "0", dev )
             luup.variable_set( SETPOINT_SID, "CurrentSetpoint", coolSP, dev )
             callCool(dev)
-        elseif (modeTarget == "AutoChangeOver" or modeTarget == "HeatOn") and (currentTemp <= (heatSP-differential)) then
+        elseif string.find("HeatOn:AutoChangeOver", currMode) and (currentTemp <= (heatSP-differential)) then
             luup.variable_set( SETPOINT_SID, "SetpointAchieved", "0", dev )
             luup.variable_set( SETPOINT_SID, "CurrentSetpoint", heatSP, dev )
             callHeat(dev)
         else
-            -- Staying InDeadBand. If fan mode is continuous on, and fan is not running, start it.
+            -- Staying Idle. If fan mode is continuous on, and fan is not running, start it.
             local fanMode = luup.variable_get(FANMODE_SID, "Mode", dev) or "Auto"
-            if fanMode == "ContinuousOn" then 
+            if fanMode == "ContinuousOn" then
                 local fanStatus = luup.variable_get(FANMODE_SID, "FanStatus", dev) or "Off"
                 if fanStatus ~= "On" then
                     clearTask(dev, "fan")
                     fanOn(dev)
+                    if currState == "Idle" then
+                        currState = "FanOnly"
+                        luup.variable_set( OPSTATE_SID, "ModeState", currState, dev )
+                    end
                 end
             end
         end
-    elseif modeStatus == "CoolOn" or modeStatus == "HeatOn" then
+    elseif string.find("Cooling:Heating", currState) then
         local coolMRT = getVarNumeric( "CoolMaxRuntime", 7200, dev)
         local heatMRT = getVarNumeric( "HeatMaxRuntime", 7200, dev)
         local runTime = 0
         if devCycleStart[dev] > 0 then runTime = now - devCycleStart[dev] end
-        D("checkSensor(): handling %1, runTime=%2, heatSP=%3, coolSP=%4", modeStatus, runTime, heatSP, coolSP)
+        D("checkSensor(): handling %1, runTime=%2, heatSP=%3, coolSP=%4", currMode, runTime, heatSP, coolSP)
         if runTime > 3599 then
             -- Show as hours and minutes for 100 minutes and up
             luup.variable_set( MYSID, "CycleTime", string.format("%dh%02dm", math.floor(runTime/3600), math.floor(runTime/60) % 60), dev )
@@ -718,29 +713,31 @@ local function checkSensors(dev)
             -- Show minutes
             luup.variable_set( MYSID, "CycleTime", string.format("%dm", math.floor(runTime/60), runTime % 60), dev )
         end
-        if modeStatus == "CoolOn" and (currentTemp <= coolSP or runTime >= coolMRT) then
+        if currState == "Cooling" and (currentTemp <= coolSP or runTime >= coolMRT) then
             coolOff(dev)
             if currentTemp <= coolSP then
                 luup.variable_set( SETPOINT_SID, "SetpointAchieved", "1", dev )
             end
-            if runTime >= coolMRT then 
+            if runTime >= coolMRT then
                 L("Cooling lockout due to excess runtime (%1>%2)", runTime, coolMRT)
-                devLockout[dev] = now + getVarNumeric( "CoolingLockout", 1800, dev ) 
+                devLockout[dev] = now + getVarNumeric( "CoolingLockout", 1800, dev )
+                luup.variable_set( OPSTATE_SID, "ModeState", "Lockout", dev )
             end
-        elseif modeStatus == "HeatOn" and (currentTemp >= heatSP or runTime >= heatMRT) then
+        elseif currState == "Heating" and (currentTemp >= heatSP or runTime >= heatMRT) then
             heatOff(dev)
             if currentTemp >= heatSP then
                 luup.variable_set( SETPOINT_SID, "SetpointAchieved", "1", dev )
             end
-            if runTime >= heatMRT then 
+            if runTime >= heatMRT then
                 L("Heating lockout due to excess runtime (%1>%2)", runTime, heatMRT)
                 devLockout[dev] = now + getVarNumeric( "HeatingLockout", 1800, dev )
+                luup.variable_set( OPSTATE_SID, "ModeState", "Lockout", dev )
             end
-        else    
-            D("checkSensors() continuing %1", modeStatus)
+        else
+            D("checkSensors() continuing mode %1 state %2", currMode, currState)
         end
     else
-        D("nothing to do in %1 mode", modeStatus)
+        D("nothing to do, mode %1 state %2", currMode, currState)
     end
     updateDisplayStatus(dev)
 end
@@ -749,31 +746,36 @@ local function transition( dev, oldTarget, newTarget )
     D("transition(%1,%2,%3)", dev, oldTarget, newTarget)
 
     -- See if what we're currently doing is compatible with where we're going.
-    local currStatus = luup.variable_get( OPMODE_SID, "ModeStatus", dev ) or "Off"
-    D("transition() current ModeStatus is %1", currStatus)
+    local currMode = luup.variable_get( OPMODE_SID, "ModeStatus", dev ) or "Off"
+    local currState = luup.variable_get( OPSTATE_SID, "ModeState", dev ) or "Idle"
+    D("transition() current mode is %1, state is %2", currMode, currState)
     if newTarget == "Off" then
-        goIdle( dev, currStatus )
+        goIdle( dev, currState )
         clearTask(dev, "fan")
         fanOff(dev)
         luup.variable_set( OPMODE_SID, "ModeStatus", "Off", dev )
+        luup.variable_set( OPSTATE_SID, "ModeState", "Idle", dev )
     else
         -- Going into some active status. Start us off right.
-        if currStatus == "Off" then
-            currStatus = "InDeadBand"
-            luup.variable_set( OPMODE_SID, "ModeStatus", currStatus, dev )
+        if currMode == "Off" then
+            currState = "Idle"
+            luup.variable_set( OPSTATE_SID, "ModeState", currState, dev )
         end
         if newTarget == "AutoChangeOver" then
             -- Going to auto-changeover from any status is pretty much going to work.
+            luup.variable_set( OPMODE_SID, "ModeStatus", newTarget, dev )
         elseif newTarget == "CoolOn" then
             -- Going to cool-only. If currently heating, stop that.
-            if currStatus == "HeatOn" then 
-                heatOff(dev) 
+            if currState == "Heating" then
+                goIdle( dev, currState )
             end
+            luup.variable_set( OPMODE_SID, "ModeStatus", newTarget, dev )
         elseif newTarget == "HeatOn" then
             -- Going to heat-only. If currently cooling, stop that.
-            if currStatus == "CoolOn" then 
-                coolOff(dev) 
+            if currState == "Cooling" then
+                goIdle( dev, currState )
             end
+            luup.variable_set( OPMODE_SID, "ModeStatus", newTarget, dev )
         else
             L("Attempting transition to %1; I don't know how, so I'm ignoring it.")
         end
@@ -786,31 +788,30 @@ function varChanged( dev, sid, var, oldVal, newVal )
     assert(luup.device ~= nil) -- fails on openLuup, have discussed with author but no fix forthcoming as of yet.
     if sid == FANMODE_SID then
         if var == "Mode" then
-            local state = luup.variable_get(OPMODE_SID, "ModeStatus", luup.device) or "Off"
-            if state == "Off" then
+            local currMode = luup.variable_get(OPMODE_SID, "ModeStatus", luup.device) or "Off"
+            if currMode == "Off" then
                 -- If thermostat is off, regardless of new mode, the fan is off.
                 fanAutoOff(luup.device)
             elseif newVal == "ContinuousOn" then
                 clearTask(luup.device, "fan")
                 fanOn(luup.device)
-            else
-                if state == "InDeadBand" then
+            elseif newVal == "PeriodicOn" then
+                local currState = luup.variable_get(OPSTATE_SID, "ModeState", luup.device) or "Idle"
+                if currState:match("Idle:Lockout") then
                     fanAutoOff(luup.device)
                 end
             end
         elseif var == "FanStatus" then
             updateDisplayStatus(luup.device)
         end
-    elseif sid == OPMODE_SID then
-        if var == "ModeTarget" then
-            transition( luup.device, oldVal, newVal )
-            checkSensors(luup.device)
-        elseif var == "ModeStatus" then
-            updateDisplayStatus(luup.device)
-        end
+    elseif sid == OPMODE_SID and var == "ModeTarget" then
+        transition( luup.device, oldVal, newVal )
+        checkSensors(luup.device)
+    elseif sid == OPSTATE_SID and var == "ModeState" then
+        updateDisplayStatus(luup.device)
     elseif sid == MYSID or sid == TEMPSENS_SID then
         checkSensors(luup.device)
-    else    
+    else
         L("*** Unexpected watch callback for dev=%1, sid=%2, var=%3 (from %4 to %5)", dev, sid, var, oldVal, newVal)
     end
 end
@@ -894,18 +895,19 @@ function actionSetCurrentSetpoint( dev, newSP, whichSP )
     newSP = constrain( newSP, sysTemps.minimum, sysTemps.maximum )
 
     if whichSP == nil then whichSP = luup.variable_get( SETPOINT_SID, "Application", dev ) or "DualHeatingCooling" end
-    
-    local modeStatus = luup.variable_get( OPMODE_SID, "ModeStatus", dev ) or "Off"
-    
+
+    local currMode = luup.variable_get( OPMODE_SID, "ModeStatus", dev ) or "Off"
+    local currState = luup.variable_get( OPSTATE_SID, "ModeState", dev ) or "idle"
+
     local heatSP = getVarNumeric( "SetpointHeating", sysTemps.default, dev, MYSID )
     local coolSP = getVarNumeric( "SetpointCooling", sysTemps.default, dev, MYSID )
-    
+
     if whichSP == "DualHeatingCooling" then
         luup.variable_set( SETPOINT_SID, "CurrentSetpoint", newSP, dev )
         luup.variable_set( MYSID, "SetpointHeating", newSP, dev )
         luup.variable_set( MYSID, "SetpointCooling", newSP, dev )
     elseif whichSP == "Heating" then
-        if modeStatus == "HeatOn" then
+        if currMode == "HeatOn" then
             luup.variable_set( SETPOINT_SID, "CurrentSetpoint", newSP, dev )
         end
         if newSP > coolSP then
@@ -914,7 +916,7 @@ function actionSetCurrentSetpoint( dev, newSP, whichSP )
         end
         luup.variable_set( MYSID, "SetpointHeating", newSP, dev )
     elseif whichSP == "Cooling" then
-        if modeStatus == "CoolOn" then
+        if currMode == "CoolOn" then
             luup.variable_set( SETPOINT_SID, "CurrentSetpoint", newSP, dev )
         end
         if newSP < heatSP then
@@ -982,7 +984,7 @@ function requestHandler(lul_request, lul_parameters, lul_outputformat)
         debugMode = true
         return
     end
-    
+
     local target = tonumber(lul_parameters['devnum']) or luup.device
     local n
     local html = string.format("lul_request=%q\n", lul_request)
@@ -1071,6 +1073,7 @@ local function plugin_runOnce(dev)
 
         luup.variable_set(OPMODE_SID, "ModeTarget", "Off", dev)
         luup.variable_set(OPMODE_SID, "ModeStatus", "Off", dev)
+        luup.variable_set(OPSTATE_SID, "ModeState", "Idle", dev)
         luup.variable_set(OPMODE_SID, "EnergyModeTarget", EMODE_NORMAL, dev)
         luup.variable_set(OPMODE_SID, "EnergyModeStatus", EMODE_NORMAL, dev)
         luup.variable_set(OPMODE_SID, "AutoMode", "1", dev)
@@ -1080,13 +1083,14 @@ local function plugin_runOnce(dev)
 
         luup.variable_set(SETPOINT_SID, "Application", "DualHeatingCooling", dev)
         luup.variable_set(SETPOINT_SID, "SetpointAchieved", "0", dev)
-        
+
         luup.variable_set(MYSID, "Version", _CONFIGVERSION, dev)
         return
     end
-    
+
     if rev < 010100 then
         D("runOnce() updating config for rev 010100")
+        luup.variable_set( OPSTATE_SID, "ModeState", "Idle", dev )
         luup.variable_set( MYSID, "NormalHeatingSetpoint", luup.variable_get( MYSID, "SetpointHeating", dev ), dev )
         luup.variable_set( MYSID, "NormalCoolingSetpoint", luup.variable_get( MYSID, "SetpointCooling", dev ), dev )
         if luup.attr_get("TemperatureFormat",0) == "C" then
@@ -1099,7 +1103,7 @@ local function plugin_runOnce(dev)
             luup.variable_set( MYSID, "ConfigurationUnits", "F", dev )
         end
     end
-    
+
     -- No matter what happens above, if our versions don't match, force that here/now.
     if (rev ~= _CONFIGVERSION) then
         luup.variable_set(MYSID, "Version", _CONFIGVERSION, dev)
@@ -1109,7 +1113,7 @@ end
 function plugin_init(dev)
     D("init(%1)", dev)
     L("starting plugin version %1 device %2", _PLUGIN_VERSION, dev)
-    
+
     -- Check for ALTUI and OpenLuup
     local k,v
     for k,v in pairs(luup.devices) do
@@ -1117,8 +1121,8 @@ function plugin_init(dev)
             local rc,rs,jj,ra
             D("init() detected ALTUI at %1", k)
             isALTUI = true
-            rc,rs,jj,ra = luup.call_action("urn:upnp-org:serviceId:altui1", "RegisterPlugin", 
-                { newDeviceType=MYTYPE, newScriptFile="J_AutoVirtualThermostat1_ALTUI.js", newDeviceDrawFunc="AutoVirtualThermostat_ALTUI.DeviceDraw" }, 
+            rc,rs,jj,ra = luup.call_action("urn:upnp-org:serviceId:altui1", "RegisterPlugin",
+                { newDeviceType=MYTYPE, newScriptFile="J_AutoVirtualThermostat1_ALTUI.js", newDeviceDrawFunc="AutoVirtualThermostat_ALTUI.DeviceDraw" },
                 k )
             D("init() ALTUI's RegisterPlugin action returned resultCode=%1, resultString=%2, job=%3, returnArguments=%4", rc,rs,jj,ra)
         elseif v.device_type == "openLuup" then
@@ -1137,38 +1141,38 @@ function plugin_init(dev)
 
     -- See if we need any one-time inits
     plugin_runOnce(dev)
-    
+
     -- Initialize device context
     runStamp[dev] = 0
     devTasks[dev] = nil
     devLastOff[dev] = { heating=0, cooling=0 }
     devCycleStart[dev] = 0
     devLockout[dev] = 0
-    
+
     -- Make sure we come up in a known state
     heatOff(dev)
     coolOff(dev)
-    
+
     -- Other inits
     local units = luup.attr_get("TemperatureFormat", 0)
-    if units == "C" then    
+    local cfUnits = luup.variable_get( MYSID, "ConfigurationUnits", dev )
+    if units == "C" then
         -- Default temp 22, range 5 to 35
         sysTemps = { default=22, minimum=5, maximum=35 }
     else
         -- Default temp 72, range 41 to 95
         sysTemps = { default=72, minimum=41, maximum=95 }
     end
-    local cfUnits = luup.variable_get( MYSID, "ConfigurationUnits", dev )
     if cfUnits ~= units then
         -- If system config doesn't match our config, stop. Potential danger.
         return false, "System temp units changed", _PLUGIN_NAME
     end
-    
+
     -- Watch some things, to make us quick to respond to changes.
     luup.variable_watch( "avtVarChanged", MYSID, "SetpointHeating", dev )
     luup.variable_watch( "avtVarChanged", MYSID, "SetpointCooling", dev )
     luup.variable_watch( "avtVarChanged", OPMODE_SID, "ModeTarget", dev )
-    luup.variable_watch( "avtVarChanged", OPMODE_SID, "ModeStatus", dev )
+    luup.variable_watch( "avtVarChanged", OPSTATE_SID, "ModeState", dev )
     luup.variable_watch( "avtVarChanged", FANMODE_SID, "Mode", dev )
     luup.variable_watch( "avtVarChanged", FANMODE_SID, "FanStatus", dev )
     local ts = luup.variable_get(MYSID, "TempSensors", dev) or ""
@@ -1178,10 +1182,10 @@ function plugin_init(dev)
             luup.variable_watch( "avtVarChanged", TEMPSENS_SID, "CurrentTemperature", tonumber(ts,10) )
         end
     end
-    
+
     -- Seed the recurring "sense" task.
     scheduleTask( dev, { ['type']="sense", func=checkSensors, dev=dev, ['time']=os.time()+30, recurring=getVarNumeric("Interval", 60, dev) } )
-    
+
     L("Running!")
 
     luup.set_failure( 0, dev )

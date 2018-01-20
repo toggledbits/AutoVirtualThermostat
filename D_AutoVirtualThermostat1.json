@@ -51,6 +51,7 @@
             },
             "Position": "0",
             "TabType": "flash",
+            "top_navigation_tab": 1,
             "ControlGroup": [{
                     "id": "1",
                     "scenegroup": "1"
@@ -529,6 +530,21 @@
                         "Value": "?"
                     },
                     "ControlCode": "vt_status"
+                },
+                {
+                    "ControlType": "label",
+                    "top": 0,
+                    "left": 0,
+                    "Label": {
+                        "lang_tag": "tb_avt_donate",
+                        "text": "<b>Find AutoVirtualThermostat useful?</b> Please consider supporting the project with <a href=\"https://www.makersupport.com/toggledbits\" target=\"_blank\">a one-time &ldquo;tip&rdquo;, or a monthly $1 donation</a>. I am grateful for any support you choose to give!"
+                    },
+                    "Display": {
+                        "Top": 180,
+                        "Left": 30,
+                        "Width": 320,
+                        "Height": 96
+                    }
                 }
             ],
             "Conditions": [{

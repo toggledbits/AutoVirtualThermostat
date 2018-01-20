@@ -11,6 +11,8 @@ local _PLUGIN_NAME = "AutoVirtualThermostat"
 local _PLUGIN_VERSION = "1.1"
 local _CONFIGVERSION = 010100
 
+local debugMode = false
+
 local MYSID = "urn:toggledbits-com:serviceId:AutoVirtualThermostat1"
 local MYTYPE = "urn:schemas-toggledbits-com:device:AutoVirtualThermostat:1"
 
@@ -29,8 +31,6 @@ local devLastOff = {}
 local devCycleStart = {}
 local devLockout = {}
 local sysTemps = { default=72, minimum=41, maximum=95 } 
-
-local debugMode = false
 
 local isALTUI = false
 local isOpenLuup = false

@@ -14,7 +14,7 @@
             avtRunScheduledTask = AutoVirtualThermostat.runTask
             avtVarChanged = AutoVirtualThermostat.varChanged
             avtRequestHandler = AutoVirtualThermostat.requestHandler
-            luup.register_handler("avtRequestHandler", "AVT")
+            luup.register_handler("avtRequestHandler", "AutoVirtualThermostat")
             return AutoVirtualThermostat.plugin_init(dev)
         end
     </functions>

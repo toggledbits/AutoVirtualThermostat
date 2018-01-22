@@ -8,7 +8,7 @@
 module("L_AutoVirtualThermostat1", package.seeall)
 
 local _PLUGIN_NAME = "AutoVirtualThermostat"
-local _PLUGIN_VERSION = "1.1"
+local _PLUGIN_VERSION = "1.2dev"
 local _CONFIGVERSION = 010100
 
 local debugMode = false
@@ -30,7 +30,7 @@ local devTasks = {}
 local devLastOff = {}
 local devCycleStart = {}
 local devLockout = {}
-local sysTemps = { default=72, minimum=41, maximum=95 } 
+local sysTemps = { unit="F", default=72, minimum=41, maximum=95 } 
 
 local isALTUI = false
 local isOpenLuup = false
@@ -976,11 +976,101 @@ local function devdump(name, pdev, ddev)
     return str
 end
 
+local function issKeyVal( k, v, s )
+    if s == nil then s = {} end
+    s["key"] = tostring(k)
+    s["value"] = tostring(v)
+    return s
+end
+
+local function map( m, v, d )
+    if m[v] == nil then return d end
+    return m[v]
+end
+
 function requestHandler(lul_request, lul_parameters, lul_outputformat)
+    D("requestHandler(%1,%2,%3) luup.device=%4", lul_request, lul_parameters, lul_outputformat, luup.device)
     local action = lul_parameters['command'] or "dump"
     if action == "debug" then
         debugMode = true
-        return
+        return "OK"
+    end
+    
+    if action == "ISS" then
+debugMode = true -- force if ISS is used    
+        -- ImperiHome ISS Standard System API, see http://dev.evertygo.com/api/iss#types
+        local dkjson = require('dkjson')
+        local path = lul_parameters['path'] or "/devices"
+        if path == "/system" then
+            return dkjson.encode( { id="AutoVirtualThermostat-" .. luup.pk_accesspoint, apiversion=1 } ), "application/json"
+        elseif path == "/rooms" then
+            local roomlist = { { id=0, name="No Room" } }
+            local rn,rr
+            for rn,rr in pairs( luup.rooms ) do 
+                table.insert( roomlist, { id=rn, name=rr } )
+            end
+            return dkjson.encode( { rooms=roomlist } ), "application/json"
+        elseif path == "/devices" then
+            local devices = {}
+            local lnum,ldev
+            for lnum,ldev in pairs( luup.devices ) do
+                if ldev.device_type == MYTYPE then
+                    local issinfo = {}
+                    table.insert( issinfo, issKeyVal( "curmode", map( { Off="Off",HeatOn="Heat",CoolOn="Cool",AutoChangeOver="Auto"}, luup.variable_get( OPMODE_SID, "ModeTarget", lnum ), "Off" ) ) )
+                    table.insert( issinfo, issKeyVal( "curfanmode", map( { Auto="Auto",ContinuousOn="On",PeriodicOn="Periodic" }, luup.variable_get(FANMODE_SID, "Mode", dev), "Auto" ) ) )
+                    table.insert( issinfo, issKeyVal( "curenergymode", map( { Normal="Comfort", EnergySavingsMode="Economy" }, luup.variable_get( OPMODE_SID, "EnergyModeStatus", dev ), "Normal" ) ) )
+                    table.insert( issinfo, issKeyVal( "curtemp", luup.variable_get( TEMPSENS_SID, "CurrentTemperature", lnum ), { unit="°" .. sysTemps.unit } ) )
+                    table.insert( issinfo, issKeyVal( "cursetpoint", getVarNumeric( "SetpointHeating", sysTemps.default, lnum, MYSID ) ) )
+                    table.insert( issinfo, issKeyVal( "cursetpoint1", getVarNumeric( "SetpointCooling", sysTemps.default, lnum, MYSID ) ) )
+                    table.insert( issinfo, issKeyVal( "step", 1 ) )
+                    table.insert( issinfo, issKeyVal( "minVal", sysTemps.minimum ) )
+                    table.insert( issinfo, issKeyVal( "maxVal", sysTemps.maximum ) )
+                    table.insert( issinfo, issKeyVal( "availablemodes", "Off,Heat,Cool,Auto" ) )
+                    table.insert( issinfo, issKeyVal( "availablefanmodes", "Auto,On,Periodic" ) )
+                    table.insert( issinfo, issKeyVal( "availableenergymodes", "Comfort,Economy" ) )
+                    local dev = { id=tostring(lnum), 
+                        name=ldev.description or ("#" .. lnum), 
+                        ["type"]="DevThermostat", 
+                        defaultIcon="https://www.toggledbits.com/avt/assets/vt_mode_auto.png",
+                        params=issinfo }
+                    if ldev.room_num ~= nil and ldev.room_num ~= 0 then dev.room = tostring(ldev.room_num) end
+                    table.insert( devices, dev )
+                end
+            end
+            return dkjson.encode( { devices=devices } ), "application/json"
+        else
+            local dev, act, p = string.match( path, "/devices/([^/]+)/action/([^/]+)/*(.*)$" )
+            dev = tonumber( dev, 10 )
+            if dev ~= nil and act ~= nil then
+                act = string.upper( act )
+                D("request_handler() handling action path %1, dev %2, action %3, param %4", path, dev, act, p )
+                if act == "SETMODE" then
+                    local newMode = map( { OFF="Off",HEAT="HeatOn",COOL="CoolOn",AUTO="AutoChangeOver" }, string.upper( p or "" ) )
+                    actionSetModeTarget( dev, newMode )
+                elseif act == "SETENERGYMODE" then  
+                    local newMode = map( { COMFORT="Normal", ECONOMY="EnergySavingsMode" }, string.upper( p or "" ) )
+                    actionSetEnergyModeTarget( dev, newMode )
+                elseif act == "SETFANMODE" then
+                    local newMode = map( { AUTO="Auto", ON="ContinuousOn", PERIODIC="PeriodicOn" }, string.upper( p or "" ) )
+                    actionSetFanMode( dev, newMode )
+                elseif act == "SETSETPOINT" then
+                    local temp = tonumber( p, 10 )
+                    if temp ~= nil then
+                        actionSetCurrentSetpoint( dev, temp, "Heating" )
+                    end
+                elseif act == "SETSETPOINT1" then
+                    local temp = tonumber( p, 10 )
+                    if temp ~= nil then
+                        actionSetCurrentSetpoint( dev, temp, "Cooling" )
+                    end
+                else
+                    D("requestHandler(): ISS action %1 not handled, ignored", act)
+                end
+            else 
+                D("requestHandler(): don't know how to handle ISS response for %1", path)
+                return ""
+            end
+        end
     end
     
     local target = tonumber(lul_parameters['devnum']) or luup.device
@@ -1153,10 +1243,10 @@ function plugin_init(dev)
     local units = luup.attr_get("TemperatureFormat", 0)
     if units == "C" then    
         -- Default temp 22, range 5 to 35
-        sysTemps = { default=22, minimum=5, maximum=35 }
+        sysTemps = { unit="C", default=22, minimum=5, maximum=35 }
     else
         -- Default temp 72, range 41 to 95
-        sysTemps = { default=72, minimum=41, maximum=95 }
+        sysTemps = { unit="F", default=72, minimum=41, maximum=95 }
     end
     local cfUnits = luup.variable_get( MYSID, "ConfigurationUnits", dev )
     if cfUnits ~= units then

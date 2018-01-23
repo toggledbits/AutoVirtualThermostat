@@ -1017,8 +1017,8 @@ debugMode = true -- force if ISS is used
                 if ldev.device_type == MYTYPE then
                     local issinfo = {}
                     table.insert( issinfo, issKeyVal( "curmode", map( { Off="Off",HeatOn="Heat",CoolOn="Cool",AutoChangeOver="Auto"}, luup.variable_get( OPMODE_SID, "ModeTarget", lnum ), "Off" ) ) )
-                    table.insert( issinfo, issKeyVal( "curfanmode", map( { Auto="Auto",ContinuousOn="On",PeriodicOn="Periodic" }, luup.variable_get(FANMODE_SID, "Mode", dev), "Auto" ) ) )
-                    table.insert( issinfo, issKeyVal( "curenergymode", map( { Normal="Comfort", EnergySavingsMode="Economy" }, luup.variable_get( OPMODE_SID, "EnergyModeStatus", dev ), "Normal" ) ) )
+                    table.insert( issinfo, issKeyVal( "curfanmode", map( { Auto="Auto",ContinuousOn="On",PeriodicOn="Periodic" }, luup.variable_get(FANMODE_SID, "Mode", lnum), "Auto" ) ) )
+                    table.insert( issinfo, issKeyVal( "curenergymode", map( { Normal="Comfort", EnergySavingsMode="Economy" }, luup.variable_get( OPMODE_SID, "EnergyModeTarget", lnum ), "Normal" ) ) )
                     table.insert( issinfo, issKeyVal( "curtemp", luup.variable_get( TEMPSENS_SID, "CurrentTemperature", lnum ), { unit="°" .. sysTemps.unit } ) )
                     table.insert( issinfo, issKeyVal( "cursetpoint", getVarNumeric( "SetpointHeating", sysTemps.default, lnum, MYSID ) ) )
                     table.insert( issinfo, issKeyVal( "cursetpoint1", getVarNumeric( "SetpointCooling", sysTemps.default, lnum, MYSID ) ) )

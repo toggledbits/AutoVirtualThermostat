@@ -1,5 +1,5 @@
 //# sourceURL=J_AutoVirtualThermostat1_ALTUI.js
-"use strict";
+// "use strict";
 
 var AutoVirtualThermostat_ALTUI = ( function( window, undefined ) {
 

@@ -35,11 +35,43 @@
             <name>SetCurrentSetpoint</name>
             <argumentList>
                 <argument>
-                    <name>NewCurrentSetpoint</name>
+                    <name>Application</name>
                     <direction>in</direction>
                 </argument>
                 <argument>
+                    <name>NewCurrentSetpoint</name>
+                    <direction>in</direction>
+                </argument>
+            </argumentList>
+        </action>
+        <action>
+            <name>GetCurrentSetpoint</name>
+            <argumentList>
+                <argument>
                     <name>Application</name>
+                    <direction>in</direction>
+                </argument>
+                <argument>
+                   <name>CurrentSetpoint</name>
+                   <direction>out</direction>
+                   <relatedStateVariable>CurrentSetpoint</relatedStateVariable>
+                </argument>
+            </argumentList>
+        </action>
+        <action>
+            <name>SetCoolingSetpoint</name>
+            <argumentList>
+                <argument>
+                    <name>NewCoolingSetpoint</name>
+                    <direction>in</direction>
+                </argument>
+            </argumentList>
+        </action>
+        <action>
+            <name>SetHeatingSetpoint</name>
+            <argumentList>
+                <argument>
+                    <name>NewHeatingSetpoint</name>
                     <direction>in</direction>
                 </argument>
             </argumentList>

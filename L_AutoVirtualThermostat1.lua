@@ -9,7 +9,7 @@ module("L_AutoVirtualThermostat1", package.seeall)
 
 local _PLUGIN_NAME = "AutoVirtualThermostat"
 local _PLUGIN_VERSION = "1.2dev"
-local _CONFIGVERSION = 010100
+local _CONFIGVERSION = 010101
 
 local debugMode = true
 
@@ -844,9 +844,11 @@ function actionSetEnergyModeTarget( dev, newMode )
     if newMode ~= EMODE_ECO then
         luup.variable_set( MYSID, "SetpointHeating", luup.variable_get( MYSID, "NormalHeatingSetpoint", dev ) or sysTemps.default, dev )
         luup.variable_set( MYSID, "SetpointCooling", luup.variable_get( MYSID, "NormalCoolingSetpoint", dev ) or sysTemps.default, dev )
+        luup.variable_set( MYSID, "EconomyStatus", 0, dev )
     else
         luup.variable_set( MYSID, "SetpointHeating", luup.variable_get( MYSID, "EcoHeatingSetpoint", dev ) or sysTemps.default, dev )
         luup.variable_set( MYSID, "SetpointCooling", luup.variable_get( MYSID, "EcoCoolingSetpoint", dev ) or sysTemps.default, dev )
+        luup.variable_set( MYSID, "EconomyStatus", 1, dev )
     end
     luup.variable_set( OPMODE_SID, "EnergyModeStatus", newMode, dev )
     return true
@@ -1157,6 +1159,7 @@ local function plugin_runOnce(dev)
         luup.variable_set(MYSID, "Schedule", "", dev)
         luup.variable_set(MYSID, "DisplayTemperature", "--.-", dev)
         luup.variable_set(MYSID, "DisplayStatus", "Off", dev)
+        luup.variable_set( MYSID, "EconomyStatus", 0, dev )
 
         luup.variable_set(OPMODE_SID, "ModeTarget", "Off", dev)
         luup.variable_set(OPMODE_SID, "ModeStatus", "Off", dev)
@@ -1187,6 +1190,15 @@ local function plugin_runOnce(dev)
             luup.variable_set( MYSID, "EcoCoolingSetpoint", "85", dev )
             luup.variable_set( MYSID, "ConfigurationUnits", "F", dev )
         end
+    end
+    
+    if rev < 010101 then
+        D("runOnce() updating config for rev 010101")
+        --[[ ALTUI has a limitation in its implementation of multistate checkboxes in that
+             it only supports numeric values for status. This variable is a workaround; it
+             tracks the value of HVAC_OperatingMode1/EnergyModeStatus. If amg0 decides to
+             tackle that issue, we can reverse this later. --]]
+        luup.variable_set( MYSID, "EconomyStatus", 0, dev )
     end
     
     -- No matter what happens above, if our versions don't match, force that here/now.

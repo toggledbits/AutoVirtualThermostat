@@ -830,17 +830,14 @@ function actionSetEnergyModeTarget( dev, newMode )
     if newMode == "eco" or newMode == "economy" or newMode == "energysavingsmode" then newMode = EMODE_ECO
     elseif newMode == "normal" or newMode == "comfort" then newMode = EMODE_NORMAL
     else
-        -- Emulate the behavior of SVT by accepting 0/1 for Eco/Normal respectively.
+        -- Emulate the behavior of SmartVT by accepting 0/1 for Eco/Normal respectively.
         newMode = tonumber( newMode, 10 )
         if newMode == nil then return false, "Invalid NewEnergyModeTarget"
         elseif newMode ~= 0 then newMode = EMODE_NORMAL
         else newMode = EMODE_ECO
         end
     end
-    local currEmode = luup.variable_get( OPMODE_SID, "EnergyModeStatus", dev ) or ""
-    if currEmode == newMode then return true end -- No change in current mode
     luup.variable_set( OPMODE_SID, "EnergyModeTarget", newMode, dev )
-    luup.variable_set( SETPOINT_SID, "SetpointAchieved", "0", dev )
     if newMode ~= EMODE_ECO then
         luup.variable_set( MYSID, "SetpointHeating", luup.variable_get( MYSID, "NormalHeatingSetpoint", dev ) or sysTemps.default, dev )
         luup.variable_set( MYSID, "SetpointCooling", luup.variable_get( MYSID, "NormalCoolingSetpoint", dev ) or sysTemps.default, dev )
@@ -851,6 +848,7 @@ function actionSetEnergyModeTarget( dev, newMode )
         luup.variable_set( MYSID, "EconomyStatus", 1, dev )
     end
     luup.variable_set( OPMODE_SID, "EnergyModeStatus", newMode, dev )
+    luup.variable_set( SETPOINT_SID, "SetpointAchieved", "0", dev )
     return true
 end
 
@@ -1198,7 +1196,9 @@ local function plugin_runOnce(dev)
              it only supports numeric values for status. This variable is a workaround; it
              tracks the value of HVAC_OperatingMode1/EnergyModeStatus. If amg0 decides to
              tackle that issue, we can reverse this later. --]]
-        luup.variable_set( MYSID, "EconomyStatus", 0, dev )
+        local st = 0
+        if luup.variable_get( OPMODE_SID, "EnergyModeStatus", dev ) ~= "Normal" then st = 1 end
+        luup.variable_set( MYSID, "EconomyStatus", st, dev )
     end
     
     -- No matter what happens above, if our versions don't match, force that here/now.

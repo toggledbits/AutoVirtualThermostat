@@ -11,7 +11,7 @@ local _PLUGIN_NAME = "AutoVirtualThermostat"
 local _PLUGIN_VERSION = "1.2dev"
 local _CONFIGVERSION = 010100
 
-local debugMode = false
+local debugMode = true
 
 local MYSID = "urn:toggledbits-com:serviceId:AutoVirtualThermostat1"
 local MYTYPE = "urn:schemas-toggledbits-com:device:AutoVirtualThermostat:1"
@@ -997,7 +997,6 @@ function requestHandler(lul_request, lul_parameters, lul_outputformat)
     end
     
     if action == "ISS" then
-debugMode = true -- force if ISS is used    
         -- ImperiHome ISS Standard System API, see http://dev.evertygo.com/api/iss#types
         local dkjson = require('dkjson')
         local path = lul_parameters['path'] or "/devices"
@@ -1199,7 +1198,7 @@ end
 function plugin_init(dev)
     D("init(%1)", dev)
     L("starting plugin version %1 device %2", _PLUGIN_VERSION, dev)
-    
+
     -- Check for ALTUI and OpenLuup
     local k,v
     for k,v in pairs(luup.devices) do
@@ -1212,7 +1211,7 @@ function plugin_init(dev)
                 k )
             D("init() ALTUI's RegisterPlugin action returned resultCode=%1, resultString=%2, job=%3, returnArguments=%4", rc,rs,jj,ra)
         elseif v.device_type == "openLuup" then
-            D("init() detected openLuup")
+            L("Detected openLuup!")
             isOpenLuup = true
         end
     end
@@ -1221,6 +1220,7 @@ function plugin_init(dev)
     if not plugin_checkVersion(dev) then
         L("This plugin does not run on this firmware!")
         luup.variable_set( MYSID, "Failure", "1", dev )
+        luup.variable_set( MYSID, "DisplayStatus", "Unsupported firmware", dev )
         luup.set_failure( 1, dev )
         return false, "Unsupported system firmware", _PLUGIN_NAME
     end

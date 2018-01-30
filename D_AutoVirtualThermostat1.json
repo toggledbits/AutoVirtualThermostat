@@ -252,10 +252,9 @@
                          },
                          "ControlGroup":1,
                          "Display":{
-                            "_comment": "2018-01-28 ALTUI only supports numeric values in multistate button at this time, so kludged a numeric value to mirror the UPnP state",
-                            "Service": "urn:toggledbits-com:serviceId:AutoVirtualThermostat1",
-                            "Variable": "EconomyStatus",
-                            "Value": "0"
+                            "Service": "urn:upnp-org:serviceId:HVAC_UserOperatingMode1",
+                            "Variable": "EnergyModeStatus",
+                            "Value": "Normal"
                          },
                          "Command": {
                             "Service": "urn:upnp-org:serviceId:HVAC_UserOperatingMode1",
@@ -276,10 +275,9 @@
                          },
                          "ControlGroup":1,
                          "Display":{
-                            "_comment": "2018-01-28 ALTUI only supports numeric values in multistate button at this time, so kludged a numeric value to mirror the UPnP state",
-                            "Service": "urn:toggledbits-com:serviceId:AutoVirtualThermostat1",
-                            "Variable": "EconomyStatus",
-                            "Value":"1"
+                            "Service": "urn:upnp-org:serviceId:HVAC_UserOperatingMode1",
+                            "Variable": "EnergyModeStatus",
+                            "Value": "EnergySavingsMode"
                          },
                          "Command": {
                             "Service": "urn:upnp-org:serviceId:HVAC_UserOperatingMode1",

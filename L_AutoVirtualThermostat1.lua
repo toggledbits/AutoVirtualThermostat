@@ -11,7 +11,7 @@ local _PLUGIN_NAME = "AutoVirtualThermostat"
 local _PLUGIN_VERSION = "1.2dev"
 local _CONFIGVERSION = 010101
 
-local debugMode = true
+local debugMode = false
 
 local MYSID = "urn:toggledbits-com:serviceId:AutoVirtualThermostat1"
 local MYTYPE = "urn:schemas-toggledbits-com:device:AutoVirtualThermostat:1"
@@ -841,11 +841,9 @@ function actionSetEnergyModeTarget( dev, newMode )
     if newMode ~= EMODE_ECO then
         luup.variable_set( MYSID, "SetpointHeating", luup.variable_get( MYSID, "NormalHeatingSetpoint", dev ) or sysTemps.default, dev )
         luup.variable_set( MYSID, "SetpointCooling", luup.variable_get( MYSID, "NormalCoolingSetpoint", dev ) or sysTemps.default, dev )
-        luup.variable_set( MYSID, "EconomyStatus", 0, dev )
     else
         luup.variable_set( MYSID, "SetpointHeating", luup.variable_get( MYSID, "EcoHeatingSetpoint", dev ) or sysTemps.default, dev )
         luup.variable_set( MYSID, "SetpointCooling", luup.variable_get( MYSID, "EcoCoolingSetpoint", dev ) or sysTemps.default, dev )
-        luup.variable_set( MYSID, "EconomyStatus", 1, dev )
     end
     luup.variable_set( OPMODE_SID, "EnergyModeStatus", newMode, dev )
     luup.variable_set( SETPOINT_SID, "SetpointAchieved", "0", dev )
@@ -1157,7 +1155,6 @@ local function plugin_runOnce(dev)
         luup.variable_set(MYSID, "Schedule", "", dev)
         luup.variable_set(MYSID, "DisplayTemperature", "--.-", dev)
         luup.variable_set(MYSID, "DisplayStatus", "Off", dev)
-        luup.variable_set( MYSID, "EconomyStatus", 0, dev )
 
         luup.variable_set(OPMODE_SID, "ModeTarget", "Off", dev)
         luup.variable_set(OPMODE_SID, "ModeStatus", "Off", dev)
@@ -1170,6 +1167,8 @@ local function plugin_runOnce(dev)
 
         luup.variable_set(SETPOINT_SID, "Application", "DualHeatingCooling", dev)
         luup.variable_set(SETPOINT_SID, "SetpointAchieved", "0", dev)
+        
+        luup.variable_set(HADEVICE_SID, "ModeSetting", "1:;2:;3:;4:", dev)
         
         luup.variable_set(MYSID, "Version", _CONFIGVERSION, dev)
         return
@@ -1196,9 +1195,7 @@ local function plugin_runOnce(dev)
              it only supports numeric values for status. This variable is a workaround; it
              tracks the value of HVAC_OperatingMode1/EnergyModeStatus. If amg0 decides to
              tackle that issue, we can reverse this later. --]]
-        local st = 0
-        if luup.variable_get( OPMODE_SID, "EnergyModeStatus", dev ) ~= "Normal" then st = 1 end
-        luup.variable_set( MYSID, "EconomyStatus", st, dev )
+        luup.variable_set(HADEVICE_SID, "ModeSetting", "1:;2:;3:;4:", dev)
     end
     
     -- No matter what happens above, if our versions don't match, force that here/now.

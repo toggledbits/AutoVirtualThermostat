@@ -193,28 +193,36 @@ function nextRun(stepStamp, pdev)
     luup.call_delay( "avtRunScheduledTask", delay, string.format("%d:%d", stepStamp, pdev) )
 end
 
--- Remove currently scheduled task matching type for device
-local function clearTask( dev, taskType )
-    D("clearTask(%1,%2)", dev, taskType)
-    -- Remove any currently scheduled task of the same type.
+-- Find task
+local function findTask( dev, taskType )
     local lt = devTasks[dev]
     local pt = nil
     while lt ~= nil do
         if lt.dev == dev and lt.type == taskType then
-            D("clearTask() removing prior %1 by %2", lt.type, lt.caller)
-            if pt == nil then
-                devTasks[dev] = lt.next
-            else
-                pt.next = lt.next
-            end
-            lt.next = nil
             break
         else
             pt = lt
             lt = lt.next
         end
     end
-    return lt
+    return lt, pt
+end
+    
+-- Remove currently scheduled task matching type for device
+local function clearTask( dev, taskType )
+    D("clearTask(%1,%2)", dev, taskType)
+    -- Remove any currently scheduled task of the same type.
+    local lt, pt = findTask( dev, taskType )
+    if lt ~= nil then
+        D("clearTask() removing prior %1 by %2", lt.type, lt.caller)
+        if pt == nil then
+            devTasks[dev] = lt.next
+        else
+            pt.next = lt.next
+        end
+        lt.next = nil
+    end
+    return lt, pt
 end
 
 -- Insert task into task list. That's all.
@@ -474,6 +482,25 @@ local function goIdle( dev, currState )
     elseif currState == "HeatOn" then  
         heatOff(dev)
     end
+    local currTarget = luup.variable_get( OPMODE_SID, "ModeTarget", dev ) or "Off" 
+    if currTarget ~= "Off" then
+        -- See if fan needs to be on
+        local fanMode = luup.variable_get(FANMODE_SID, "Mode", dev) or "Auto"
+        if fanMode == "ContinuousOn" then 
+            local fanStatus = luup.variable_get(FANMODE_SID, "FanStatus", dev) or "Off"
+            if fanStatus ~= "On" then
+                -- Unconditionally on.
+                clearTask(dev, "fan")
+                fanOn(dev)
+            end
+        elseif fanMode == "PeriodicOn" then
+            -- If no other fan task is pending, start the periodic task
+            local task = findTask( dev, "fan" )
+            if task == nil then
+                fanPeriodicOff( dev )
+            end
+        end
+    end
 end    
 
 local function taskIdle( dev, pdev )
@@ -702,6 +729,14 @@ local function checkSensors(dev)
                 if fanStatus ~= "On" then
                     clearTask(dev, "fan")
                     fanOn(dev)
+                end
+            elseif fanMode == "PeriodicOn" then
+                local task = findTask( dev, "fan" )
+                if task == nil then
+                    -- We're in PeriodicOn, so there should always be a task on the queue (on or off).
+                    -- If no task, launch
+                    L("Periodic fan task missing. Starting cycle.")
+                    fanPeriodicOff( dev )
                 end
             end
         end
@@ -1216,8 +1251,13 @@ function plugin_init(dev)
             D("init() detected ALTUI at %1", k)
             isALTUI = true
             rc,rs,jj,ra = luup.call_action("urn:upnp-org:serviceId:altui1", "RegisterPlugin", 
-                { newDeviceType=MYTYPE, newScriptFile="J_AutoVirtualThermostat1_ALTUI.js", newDeviceDrawFunc="AutoVirtualThermostat_ALTUI.DeviceDraw" }, 
-                k )
+                { 
+                    newDeviceType=MYTYPE, 
+                    newScriptFile="J_AutoVirtualThermostat1_ALTUI.js", 
+                    newDeviceDrawFunc="AutoVirtualThermostat_ALTUI.deviceDraw",
+                    newControlPanelFunc="AutoVirtualThermostat_ALTUI.controlPanelDraw",
+                    newStyleFunc="AutoVirtualThermostat_ALTUI.getStyle"
+                }, k )
             D("init() ALTUI's RegisterPlugin action returned resultCode=%1, resultString=%2, job=%3, returnArguments=%4", rc,rs,jj,ra)
         elseif v.device_type == "openLuup" then
             L("Detected openLuup!")

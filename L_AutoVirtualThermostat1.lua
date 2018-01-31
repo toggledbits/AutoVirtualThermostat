@@ -9,6 +9,7 @@ module("L_AutoVirtualThermostat1", package.seeall)
 
 local _PLUGIN_NAME = "AutoVirtualThermostat"
 local _PLUGIN_VERSION = "1.2dev"
+local _PLUGIN_URL = "http://www.toggledbits.com/avt"
 local _CONFIGVERSION = 010101
 
 local debugMode = false
@@ -986,29 +987,6 @@ local function ldump(name, t, seen)
     return str
 end
 
-local function devdump(name, pdev, ddev)
-    if ddev == nil then ddev = getVarNumeric( name, 0, pdev, MYSID ) end
-    local str = string.format("\n-- Configured device %q (%d): ", name, ddev)
-    if ddev == 0 then
-        str = str .. "not defined\n"
-    elseif luup.devices[ddev] == nil then
-        str = str .. " not in luup.devices?"
-    else
-        str = str .. "\n" .. ldump(string.format("luup.devices[%d]", ddev), luup.devices[ddev])
-    end
-    if ddev > 0 then
-        str = str .. "-- state"
-        local status,body,httpStatus
-        status,body,httpStatus = luup.inet.wget("http://localhost:3480/data_request?id=status&output_format=json&DeviceNum=" .. tostring(ddev), 30)
-        if status == 0 then
-            str = str .. "\n" .. body .. "\n"
-        else
-            str = str .. string.format("request returned %s, %q, %s\n", status, body, httpStatus)
-        end
-    end
-    return str
-end
-
 local function issKeyVal( k, v, s )
     if s == nil then s = {} end
     s["key"] = tostring(k)
@@ -1021,18 +999,45 @@ local function map( m, v, d )
     return m[v]
 end
 
+local function getDevice( dev, pdev, v )
+    local dkjson = require("dkjson")
+    if v == nil then v = luup.devices[dev] end
+    local devinfo = { 
+          devNum=dev
+        , ['type']=v.device_type
+        , description=v.description or ""
+        , room=v.room_num or 0
+        , udn=v.udn or ""
+        , id=v.id
+        , ['device_json'] = luup.attr_get( "device_json", k )
+        , ['impl_file'] = luup.attr_get( "impl_file", k )
+        , ['device_file'] = luup.attr_get( "device_file", k )
+    }
+    local rc,t,httpStatus
+    rc,t,httpStatus = luup.inet.wget("http://localhost/port_3480/data_request?id=status&DeviceNum=" .. dev .. "&output_format=json", 15)
+    if httpStatus ~= 200 or rc ~= 0 then 
+        devinfo['_comment'] = string.format( 'State info could not be retrieved, rc=%d, http=%d', rc, httpStatus )
+        return devinfo
+    end
+    local d = dkjson.decode(t)
+    local key = "Device_Num_" .. dev
+    if d ~= nil and d[key] ~= nil and d[key].states ~= nil then d = d[key].states else d = nil end
+    devinfo.states = d or {}
+    return devinfo
+end
+
 function requestHandler(lul_request, lul_parameters, lul_outputformat)
     D("requestHandler(%1,%2,%3) luup.device=%4", lul_request, lul_parameters, lul_outputformat, luup.device)
-    local action = lul_parameters['command'] or "dump"
+    local action = lul_parameters['action'] or lul_parameters['command'] or ""
     if action == "debug" then
-        debugMode = true
-        return "OK"
+        debugMode = not debugMode
+        return "Debug is now " .. tostring(debugMode), "text/plain"
     end
-    
-    if action == "ISS" then
+
+    if action:sub( 1, 3 ) == "ISS" then
         -- ImperiHome ISS Standard System API, see http://dev.evertygo.com/api/iss#types
         local dkjson = require('dkjson')
-        local path = lul_parameters['path'] or "/devices"
+        local path = lul_parameters['path'] or action:sub( 4 ) -- Work even if I'home user forgets &path=
         if path == "/system" then
             return dkjson.encode( { id="AutoVirtualThermostat-" .. luup.pk_accesspoint, apiversion=1 } ), "application/json"
         elseif path == "/rooms" then
@@ -1070,7 +1075,7 @@ function requestHandler(lul_request, lul_parameters, lul_outputformat)
                 end
             end
             return dkjson.encode( { devices=devices } ), "application/json"
-        else
+        else -- action
             local dev, act, p = string.match( path, "/devices/([^/]+)/action/([^/]+)/*(.*)$" )
             dev = tonumber( dev, 10 )
             if dev ~= nil and act ~= nil then
@@ -1098,38 +1103,63 @@ function requestHandler(lul_request, lul_parameters, lul_outputformat)
                 else
                     D("requestHandler(): ISS action %1 not handled, ignored", act)
                 end
-            else 
-                D("requestHandler(): don't know how to handle ISS response for %1", path)
-                return ""
+            else
+                D("requestHandler(): ISS malformed action request %1", path)
             end
+            return "{}", "application/json"
         end
     end
     
-    local target = tonumber(lul_parameters['devnum']) or luup.device
-    local n
-    local html = string.format("lul_request=%q\n", lul_request)
-    html = html .. ldump("lul_parameters", lul_parameters)
-    html = html .. ldump("luup.device", luup.device)
-    html = html .. ldump("_M", _M)
-    html = html .. ldump(string.format("luup.device[%s]", target), luup.devices[target])
-    if lul_parameters['names'] ~= nil then
-        html = html .. "-- dumping additional: " .. lul_parameters['names'] .. "\n"
-        local nlist = split(lul_parameters['names'])
-        for _,n in ipairs(nlist) do
-            html = html .. ldump(n, _G[n])
+    if action == "status" then
+        local dkjson = require("dkjson")
+        if dkjson == nil then return "Missing dkjson library", "text/plain" end
+        local st = {
+            name=_PLUGIN_NAME,
+            version=_PLUGIN_VERSION,
+            configversion=_CONFIGVERSION,
+            author="Patrick H. Rigney (rigpapa)",
+            url=_PLUGIN_URL,
+            ['type']=MYTYPE,
+            responder=luup.device,
+            timestamp=os.time(),
+            system = {
+                version=luup.version,
+                isOpenLuup=isOpenLuup,
+                isALTUI=isALTUI,
+                units=luup.attr_get( "TemperatureFormat", 0 ),
+            },            
+            devices={}
+        }
+        local k,v
+        for k,v in pairs( luup.devices ) do
+            if v.device_type == MYTYPE then
+                devinfo = getDevice( k, luup.device, v ) or {}
+                local d = getVarNumeric( "FanDevice", 0, k )
+                if d ~= 0 then devinfo.fandevice = getDevice( d, luup.device ) or {} end
+                d = getVarNumeric( "HeatingDevice", 0, k )
+                if d ~= 0 then devinfo.heatingdevice = getDevice( d, luup.device ) or {} end
+                d = getVarNumeric( "CoolingDevice", 0, k )
+                if d ~= 0 then devinfo.coolingdevice = getDevice( d, luup.device ) or {} end
+                d = split( luup.variable_get( MYSID, "TempSensors", k ) or "", "," )
+                local m, ts
+                ts = {}
+                for _,m in ipairs(d) do
+                    table.insert( ts, getDevice( tonumber(m,10) or 0, luup.device ) )
+                end
+                devinfo.tempsensors = ts
+                table.insert( st.devices, devinfo )
+            end
         end
+        return dkjson.encode( st ), "application/json"
     end
-    html = html .. devdump("FanDevice", target)
-    html = html .. devdump("HeatingDevice", target)
-    html = html .. devdump("CoolingDevice", target)
-    local ts = luup.variable_get( MYSID, "TempSensors", target ) or ""
-    html = html .. string.format("\n-- Configuration \"TempSensors\" = %q\n", ts)
-    local tst = split(ts)
-    local ix
-    for ix,n in ipairs(tst) do
-        html = html .. devdump(string.format("TempSensors[%d]", ix), target, tonumber(n,10))
-    end
-    return "<pre>" .. html .. "</pre>"
+    
+    return "<html><head><title>" .. _PLUGIN_NAME .. " Request Handler"
+        .. "</title></head><body bgcolor='white'>Request format: <tt>http://" .. (luup.attr_get( "ip", 0 ) or "...")
+        .. ":3480/data_request?id=lr_" .. lul_request 
+        .. "&action=</tt><p>Actions: status, debug, ISS"
+        .. "<p>Imperihome ISS URL: <tt>...&action=ISS&path=</tt><p>Documentation: <a href='"
+        .. _PLUGIN_URL .. "' target='_blank'>" .. _PLUGIN_URL .. "</a></body></html>"
+        , "text/html"
 end
 
 local function plugin_checkVersion(dev)
@@ -1183,6 +1213,7 @@ local function plugin_runOnce(dev)
         luup.variable_set(MYSID, "CoolingLockout", "1800", dev)
         luup.variable_set(MYSID, "MaxSensorDelay", "3600", dev)
         luup.variable_set(MYSID, "MaxSensorBattery", "7200", dev)
+        luup.variable_set(MYSID, "TempSensors", "", dev)
         luup.variable_set(MYSID, "CoolingDevice", "0", dev)
         luup.variable_set(MYSID, "HeatingDevice", "0", dev)
         luup.variable_set(MYSID, "FanDevice", "0", dev)
@@ -1204,6 +1235,7 @@ local function plugin_runOnce(dev)
         luup.variable_set(SETPOINT_SID, "SetpointAchieved", "0", dev)
         
         luup.variable_set(HADEVICE_SID, "ModeSetting", "1:;2:;3:;4:", dev)
+        luup.variable_set(HADEVICE_SID, "Commands", "thermostat_mode_off,thermostat_mode_heat,thermostat_mode_cool,thermostat_mode_auto,thermostat_mode_eco", dev)
         
         luup.variable_set(MYSID, "Version", _CONFIGVERSION, dev)
         return
@@ -1231,6 +1263,7 @@ local function plugin_runOnce(dev)
              tracks the value of HVAC_OperatingMode1/EnergyModeStatus. If amg0 decides to
              tackle that issue, we can reverse this later. --]]
         luup.variable_set(HADEVICE_SID, "ModeSetting", "1:;2:;3:;4:", dev)
+        luup.variable_set(HADEVICE_SID, "Commands", "thermostat_mode_off,thermostat_mode_heat,thermostat_mode_cool,thermostat_mode_auto,thermostat_mode_eco", dev)
     end
     
     -- No matter what happens above, if our versions don't match, force that here/now.

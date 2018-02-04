@@ -1187,7 +1187,7 @@ function requestHandler(lul_request, lul_parameters, lul_outputformat)
     
     return "<html><head><title>" .. _PLUGIN_NAME .. " Request Handler"
         .. "</title></head><body bgcolor='white'>Request format: <tt>http://" .. (luup.attr_get( "ip", 0 ) or "...")
-        .. ":3480/data_request?id=lr_" .. lul_request 
+        .. "/port_3480/data_request?id=lr_" .. lul_request 
         .. "&action=</tt><p>Actions: status, debug, ISS"
         .. "<p>Imperihome ISS URL: <tt>...&action=ISS&path=</tt><p>Documentation: <a href='"
         .. _PLUGIN_URL .. "' target='_blank'>" .. _PLUGIN_URL .. "</a></body></html>"

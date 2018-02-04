@@ -629,33 +629,65 @@ local function checkSensors(dev)
     local now = os.time()
     local maxSensorDelay = getVarNumeric( "MaxSensorDelay", 3600, dev )
     local maxSensorBattery = getVarNumeric( "MaxSensorBattery", 7200, dev )
+    local minBatteryLevel = getVarNumeric( "MinBatteryLevel", 20, dev )
     for _,ts in ipairs(tst) do
         local tnum = tonumber(ts,10)
         if tnum ~= nil and luup.devices[tnum] ~= nil then
-            local temp, since
-            temp,since = luup.variable_get( TEMPSENS_SID, "CurrentTemperature", tnum )
-            temp = tonumber(temp,10)
-            since = tonumber(since,10) or 0
-            local batt = getVarNumeric( "BatteryDate", nil, tnum, HADEVICE_SID )
-            if batt == nil and luup.devices[tnum].device_num_parent then
-                batt = getVarNumeric( "BatteryDate", nil, luup.devices[tnum].device_num_parent, HADEVICE_SID )
+            local temp, since, rawTemp
+            local parentDev = luup.devices[tnum].device_num_parent
+            rawTemp,since = luup.variable_get( TEMPSENS_SID, "CurrentTemperature", tnum )
+            if rawTemp ~= nil then temp = tonumber(rawTemp, 10) else temp = nil end
+            since = tonumber(since or "", 10) or 0
+            D("checkSensors() temp sensor %1 (%2) temp %3 since %4 (raw %5)", 
+                ts, luup.devices[tnum].description, temp, since, rawTemp)
+            local valid = true -- innocent until proven guilty
+            if temp == nil then
+                valid = false
+                L("Sensor %1 (%2) ineligible, invalid/non-numeric value: %3",
+                    ts, luup.devices[tnum].description, rawTemp)
             end
-            if maxSensorDelay > 0 and ((now-since) > maxSensorDelay) then
-                L("Sensor %1 (%2) ineligible, last update %3 is more than %4 ago", ts, luup.devices[tnum].description, since, maxSensorDelay)
-            elseif maxSensorBattery > 0 and batt ~= nil and ((now-batt) > maxSensorBattery) then
-                L("Sensor %1 (%2) ineligible, last battery report %3 is more than %4 ago", ts, luup.devices[tnum].description, batt, maxSensorBattery)
-            else
-                if temp ~= nil then
-                    -- Sanity check temp range and battery level
-                    D("checkSensors() sensor %1 (%2) sinceLastUpdate=%3, battery=%4, valid temp reported=%5", ts, luup.devices[tnum].description, since, batt, temp)
-                    currentTemp = currentTemp + temp
-                    tempCount = tempCount + 1
-                else
-                    L("Sensor %1 (%2) is not providing temperature, ignoring", ts, luup.devices[tnum].description)
+            if valid and maxSensorDelay > 0 and ((now-since) > maxSensorDelay) then
+                valid = false
+                L("Sensor %1 (%2) ineligible, last temperature update at %3 is more than %4 ago", 
+                    ts, luup.devices[tnum].description, since, maxSensorDelay)
+            end
+            if valid and (maxSensorBattery > 0 or minBatteryLevel > 0) then
+                -- Check battery level and timestamp. Many sensors use child devices, so if our
+                -- specified device doesn't have info for us, look at its parent.
+                local bsource = tnum
+                local blevel,btime = luup.variable_get( HADEVICE_SID, "BatteryLevel", tnum )
+                if blevel == nil and parentDev ~= nil then 
+                    bsource = parentDev
+                    blevel,btime = luup.variable_get( HADEVICE_SID, "BatteryLevel", parentDev )
+                    if blevel ~= nil then blevel = tonumber( blevel, 10 ) end
+                    if btime ~= nil then btime = tonumber( btime, 10 ) end
+                end
+                if btime == nil then
+                    btime = getVarNumeric( "BatteryDate", nil, bsource, HADEVICE_SID )
+                end
+                D("checkSensors() sensor %1 (%2) battery level %3 timestamp %4",
+                    ts, luup.devices[tnum].description, blevel, btime)
+                if btime ~= nil and maxSensorBattery > 0 and ((now-btime) > maxSensorBattery) then
+                    -- We have a timestamp, and it's out of limit
+                    valid = false
+                    L("Sensor %1 (%2) ineligible, last battery report %3 is more than %4 ago", 
+                        ts, luup.devices[tnum].description, btime, maxSensorBattery)
+                end
+                if blevel ~= nil and minBatteryLevel > 0 and blevel < minBatteryLevel then
+                    -- We have a battery level, and it's out of limit.
+                    valid = false
+                    L("Sensor %1 (%2) ineligible, battery level %1 < allowed minimum %2",
+                        ts, luup.devices[tnum].description, blevel, minBatteryLevel)
                 end
             end
+            if valid then
+                D("checkSensors() sensor %1 (%2) valid temp reported=%3", 
+                    ts, luup.devices[tnum].description, temp)
+                currentTemp = currentTemp + temp
+                tempCount = tempCount + 1
+            end
         else
-            L("Sensor %1 ignored, device not found")
+            L("Sensor %1 ineligible, device not found", ts)
         end
     end
     D("checkSensors() TempSensors=%1, valid sensors=%2, total=%3", tst, tempCount, currentTemp)
@@ -1213,6 +1245,7 @@ local function plugin_runOnce(dev)
         luup.variable_set(MYSID, "CoolingLockout", "1800", dev)
         luup.variable_set(MYSID, "MaxSensorDelay", "3600", dev)
         luup.variable_set(MYSID, "MaxSensorBattery", "7200", dev)
+        luup.variable_set(MYSID, "MinBatteryLevel", "20", dev)
         luup.variable_set(MYSID, "TempSensors", "", dev)
         luup.variable_set(MYSID, "CoolingDevice", "0", dev)
         luup.variable_set(MYSID, "HeatingDevice", "0", dev)
@@ -1258,10 +1291,7 @@ local function plugin_runOnce(dev)
     
     if rev < 010101 then
         D("runOnce() updating config for rev 010101")
-        --[[ ALTUI has a limitation in its implementation of multistate checkboxes in that
-             it only supports numeric values for status. This variable is a workaround; it
-             tracks the value of HVAC_OperatingMode1/EnergyModeStatus. If amg0 decides to
-             tackle that issue, we can reverse this later. --]]
+        luup.variable_set(MYSID, "MinBatteryLevel", "20", dev)
         luup.variable_set(HADEVICE_SID, "ModeSetting", "1:;2:;3:;4:", dev)
         luup.variable_set(HADEVICE_SID, "Commands", "thermostat_mode_off,thermostat_mode_heat,thermostat_mode_cool,thermostat_mode_auto,thermostat_mode_eco", dev)
     end

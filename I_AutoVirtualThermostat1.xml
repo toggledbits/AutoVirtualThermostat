@@ -14,7 +14,7 @@
             avtRunScheduledTask = AutoVirtualThermostat.runTask
             avtVarChanged = AutoVirtualThermostat.varChanged
             avtRequestHandler = AutoVirtualThermostat.requestHandler
-            luup.register_handler("avtRequestHandler", "AVT")
+            luup.register_handler("avtRequestHandler", "AutoVirtualThermostat")
             return AutoVirtualThermostat.plugin_init(dev)
         end
     </functions>
@@ -131,6 +131,7 @@
             <name>SetCurrentSetpoint</name>
             <run>
                 -- Set temperature setpoint for heating (convenience function to mimic other devices, but this is incompletely defined).
+luup.log("urn:upnp-org:serviceId:TemperatureSetpoint1_Heat/SetCurrentSetpoint")   
                 AutoVirtualThermostat.actionSetCurrentSetpoint( lul_device, lul_settings.NewCurrentSetpoint, "Heating" )
             </run>
         </action>
@@ -151,6 +152,7 @@
             <name>SetCurrentSetpoint</name>
             <run>
                 -- Set temperature setpoint for cooling (convenience function to mimic other devices, but this is incompletely defined).
+luup.log("urn:upnp-org:serviceId:TemperatureSetpoint1_Cool/SetCurrentSetpoint")   
                 AutoVirtualThermostat.actionSetCurrentSetpoint( lul_device, lul_settings.NewCurrentSetpoint, "Cooling" )
             </run>
         </action>
@@ -173,6 +175,24 @@
                 -- Set heating/cooling/dual setpoint. Goes through UPnP TemperatureSetpoint1, so we need to set application. See above.
                 local app = lul_settings.Application or "DualHeatingCooling"
                 AutoVirtualThermostat.actionSetCurrentSetpoint( lul_device, lul_settings.NewCurrentSetpoint, app )
+            </run>
+        </action>
+        <action>
+            <serviceId>urn:toggledbits-com:serviceId:AutoVirtualThermostat1</serviceId>
+            <name>SetCoolingSetpoint</name>
+            <run>
+                -- Set cooling setpoint. Although there are other ways to get this done, this action exists because Vera UI7 handling
+                -- of service is inconsistent in spinner_horizontal (that is, action uses display's service instead of service specified in action).
+                AutoVirtualThermostat.actionSetCurrentSetpoint( lul_device, lul_settings.NewCoolingSetpoint, "Cooling" )
+            </run>
+        </action>
+        <action>
+            <serviceId>urn:toggledbits-com:serviceId:AutoVirtualThermostat1</serviceId>
+            <name>SetHeatingSetpoint</name>
+            <run>
+                -- Set heating setpoint. Although there are other ways to get this done, this action exists because Vera UI7 handling
+                -- of service is inconsistent in spinner_horizontal (that is, action uses display's service instead of service specified in action).
+                AutoVirtualThermostat.actionSetCurrentSetpoint( lul_device, lul_settings.NewHeatingSetpoint, "Heating" )
             </run>
         </action>
         <action>

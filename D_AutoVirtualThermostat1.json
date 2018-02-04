@@ -43,7 +43,7 @@
     ],
     "x": "2",
     "y": "4",
-    "inScene": "1",
+    "inScene": 1,
     "Tabs": [{
             "Label": {
                 "lang_tag": "tabname_control",
@@ -103,11 +103,11 @@
                     "top": "0",
                     "left": "0",
                     "Label": {
-                        "lang_tag": "thermostat",
-                        "text": "Simple Virtual Thermostat"
+                        "lang_tag": "tb_avt_mode",
+                        "text": "Mode"
                     },
                     "Display": {
-                        "Top": 8,
+                        "Top": 0,
                         "Left": 30,
                         "Width": 100,
                         "Height": 25
@@ -125,7 +125,7 @@
                     "Display": {
                         "Top": 30,
                         "Left": 50,
-                        "Width": 75,
+                        "Width": 65,
                         "Height": 20,
                         "Service": "urn:upnp-org:serviceId:HVAC_UserOperatingMode1",
                         "Variable": "ModeTarget",
@@ -152,8 +152,8 @@
                     },
                     "Display": {
                         "Top": 30,
-                        "Left": 150,
-                        "Width": 75,
+                        "Left": 125,
+                        "Width": 65,
                         "Height": 20,
                         "Service": "urn:upnp-org:serviceId:HVAC_UserOperatingMode1",
                         "Variable": "ModeTarget",
@@ -184,8 +184,8 @@
                     },
                     "Display": {
                         "Top": 30,
-                        "Left": 250,
-                        "Width": 75,
+                        "Left": 200,
+                        "Width": 65,
                         "Height": 20,
                         "Service": "urn:upnp-org:serviceId:HVAC_UserOperatingMode1",
                         "Variable": "ModeTarget",
@@ -212,8 +212,8 @@
                     },
                     "Display": {
                         "Top": 30,
-                        "Left": 350,
-                        "Width": 75,
+                        "Left": 275,
+                        "Width": 65,
                         "Height": 20,
                         "Service": "urn:upnp-org:serviceId:HVAC_UserOperatingMode1",
                         "Variable": "ModeTarget",
@@ -241,15 +241,13 @@
                    "top":"0",
                    "left":"1",
                    "Display":{
-                      "Top": 120,
-                      "Left": 460,
-                      "Width": 240,
-                      "Height": 96
+                      "Top": 80,
+                      "Left": 370
                    },
                    "states":[
                       {
                          "Label":{
-                            "lang_tag":"ui7_hvac_normal",
+                            "lang_tag":"tb_avt_normal",
                             "text":"Comfort"
                          },
                          "ControlGroup":1,
@@ -268,18 +266,18 @@
                                }
                             ]
                          },
-                         "ControlCode":"hvac_emode_normal"
+                         "ControlCode":"avt_emode_normal"
                       },
                       {
                          "Label":{
-                            "lang_tag":"ui7_hvac_eco",
+                            "lang_tag":"tb_avt_eco",
                             "text": "Economy"
                          },
                          "ControlGroup":1,
                          "Display":{
                             "Service": "urn:upnp-org:serviceId:HVAC_UserOperatingMode1",
                             "Variable": "EnergyModeStatus",
-                            "Value":"EnergySavingsMode"
+                            "Value": "EnergySavingsMode"
                          },
                          "Command": {
                             "Service": "urn:upnp-org:serviceId:HVAC_UserOperatingMode1",
@@ -291,7 +289,7 @@
                                }
                             ]
                          },
-                         "ControlCode":"hvac_emode_eco"
+                         "ControlCode":"avt_emode_eco"
                       }
                    ]
                 },
@@ -300,10 +298,10 @@
                 
                 {
                     "ControlGroup": "2",
-                    "ControlType": "slider_vertical",
-                    "top": "0",
-                    "left": "2",
-                    "ControlPair": "1",
+                    "ControlType": "spinner_horizontal",
+                    "top": "1",
+                    "left": "1",
+                    "XControlPair": "1",
                     "ID": "NewCurrentSetpointHeat",
                     "Style": "numeric",
                     "LabelMin": {
@@ -314,8 +312,12 @@
                         "lang_tag": "tb_vt_setpointmax",
                         "text": "95"
                     },
+                    "LabelDown": {
+                        "lang_tag": "temperature_decrease",
+                        "text": "decrease"
+                    },
                     "LabelSymbol": {
-                        "lang_tag": "tb_vt_unitsym",
+                        "lang_tag": "tb_label_temp",
                         "text": "&deg;"
                     },
                     "Display": {
@@ -323,27 +325,26 @@
                         "Variable": "SetpointHeating",
                         "MinValue": 5,
                         "MaxValue": 95,
-                        "Top": 30,
-                        "Left": 460,
-                        "Width": 100,
-                        "Height": 20
+                        "Step": 0.5,
+                        "Editable": 1,
+                        "Top": 10,
+                        "Left": 370,
+                        "Width": 80,
+                        "Height": 60
                     },
                     "Command": {
-                        "Service": "urn:upnp-org:serviceId:TemperatureSetpoint1_Heat",
-                        "Action": "SetCurrentSetpoint",
-                        "Parameters": [{
-                            "Name": "NewCurrentSetpoint",
-                            "ID": "NewCurrentSetpointHeat"
-                        }]
+                        "Service": "urn:toggledbits-com:serviceId:AutoVirtualThermostat1",
+                        "Action": "SetHeatingSetpoint",
+                        "ActionArgumentName": "NewHeatingSetpoint"
                     },
                     "ControlCode": "heating_setpoint"
                 },
                 {
-                    "ControlGroup": "3",
-                    "ControlType": "slider_vertical",
-                    "top": "0",
-                    "left": "2.5",
-                    "ControlPair": "1",
+                    "ControlGroup": "2",
+                    "ControlType": "spinner_horizontal",
+                    "top": "3",
+                    "left": "1",
+                    "XControlPair": "1",
                     "ID": "NewCurrentSetpointCool",
                     "Style": "numeric",
                     "LabelMin": {
@@ -354,8 +355,16 @@
                         "lang_tag": "tb_vt_setpointmax",
                         "text": "95"
                     },
+                    "LabelUp": {
+                        "lang_tag": "temperature_increase",
+                        "text": "increase"
+                    },
+                    "LabelDown": {
+                        "lang_tag": "temperature_decrease",
+                        "text": "decrease"
+                    },
                     "LabelSymbol": {
-                        "lang_tag": "tb_vt_unitsym",
+                        "lang_tag": "tb_label_temp",
                         "text": "&deg;"
                     },
                     "Display": {
@@ -363,18 +372,17 @@
                         "Variable": "SetpointCooling",
                         "MinValue": 5,
                         "MaxValue": 95,
-                        "Top": 30,
-                        "Left": 508,
-                        "Width": 100,
-                        "Height": 20
+                        "Step": 0.5,
+                        "Editable": 1,
+                        "Top": 10,
+                        "Left": 450,
+                        "Width": 80,
+                        "Height": 60
                     },
                     "Command": {
-                        "Service": "urn:upnp-org:serviceId:TemperatureSetpoint1_Cool",
-                        "Action": "SetCurrentSetpoint",
-                        "Parameters": [{
-                            "Name": "NewCurrentSetpoint",
-                            "ID": "NewCurrentSetpointCool"
-                        }]
+                        "Service": "urn:toggledbits-com:serviceId:AutoVirtualThermostat1",
+                        "Action": "SetCoolingSetpoint",
+                        "ActionArgumentName": "NewCoolingSetpoint"
                     },
                     "ControlCode": "cooling_setpoint"
                 },
@@ -422,7 +430,7 @@
                     "Display": {
                         "Top": 90,
                         "Left": 50,
-                        "Width": 100,
+                        "Width": 80,
                         "Height": 20,
                         "Service": "urn:upnp-org:serviceId:HVAC_FanOperatingMode1",
                         "Variable": "Mode",
@@ -448,8 +456,8 @@
                     },
                     "Display": {
                         "Top": 90,
-                        "Left": 160,
-                        "Width": 100,
+                        "Left": 140,
+                        "Width": 80,
                         "Height": 20,
                         "Service": "urn:upnp-org:serviceId:HVAC_FanOperatingMode1",
                         "Variable": "Mode",
@@ -470,13 +478,13 @@
                     "top": "2",
                     "left": "0",
                     "Label": {
-                        "lang_tag": "cmd_periodic",
+                        "lang_tag": "tb_fan_periodic",
                         "text": "Periodic"
                     },
                     "Display": {
                         "Top": 90,
-                        "Left": 270,
-                        "Width": 100,
+                        "Left": 230,
+                        "Width": 80,
                         "Height": 20,
                         "Service": "urn:upnp-org:serviceId:HVAC_FanOperatingMode1",
                         "Variable": "Mode",

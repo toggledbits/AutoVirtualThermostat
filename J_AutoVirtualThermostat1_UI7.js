@@ -198,7 +198,7 @@ var AutoVirtualThermostat = (function(api) {
             html += window.location.hostname + ':3480/data_request?id=reload&r=' + Math.random() + '" target="_blank">reload Luup</a> for your changes to take effect.</div>';
 
             html += '<div class="clearfix"></div>';
-            html += '<div class="tb-about">Auto Virtual Thermostat ver 1.0 2017-09-09 &#169; 2017 Patrick H. Rigney, All Rights Reserved.<br/>';
+            html += '<div class="tb-about">Auto Virtual Thermostat ver 1.2 &#169; 2017,2018 Patrick H. Rigney, All Rights Reserved.<br/>';
             html += 'For documentation, support, and license information, please see <a href="http://www.toggledbits.com/avt/" target="_blank">http://www.toggledbits.com/avt/</a>';
             html += ' Your continued use of this software constitutes acceptance of and agreement to the terms of the license without limitation or exclusion.';
             html += ' CAUTION! This plugin is not to be used to control unattended devices!';

@@ -226,7 +226,7 @@ var AutoVirtualThermostat_ALTUI = ( function( window, undefined ) {
             $("#avt-status-"+device.altuiid).removeClass("altui-red");
         }
     }
-console.log("I'm loaded!");    
+
     return {
         getStyle : _getStyle,
         deviceDraw: _drawDevice,

@@ -12,7 +12,7 @@ local _PLUGIN_VERSION = "1.3"
 local _PLUGIN_URL = "http://www.toggledbits.com/avt"
 local _CONFIGVERSION = 010101
 
-local debugMode = true
+local debugMode = false
 
 local MYSID = "urn:toggledbits-com:serviceId:AutoVirtualThermostat1"
 local MYTYPE = "urn:schemas-toggledbits-com:device:AutoVirtualThermostat:1"
@@ -998,6 +998,14 @@ function actionSetCurrentSetpoint( dev, newSP, whichSP )
     luup.variable_set( SETPOINT_SID, "SetpointAchieved", "0", dev )
 end
 
+function actionSetDebug( dev, state )
+    D("actionSetDebug(%1,%2)", dev, state)
+    if state == 1 or state == "1" or state == true or state == "true" then 
+        debugMode = true 
+        D("actionSetDebug() debug logging enabled")
+    end
+end
+
 local function ldump(name, t, seen)
     if seen == nil then seen = {} end
     local str = name
@@ -1068,9 +1076,10 @@ end
 function requestHandler(lul_request, lul_parameters, lul_outputformat)
     D("requestHandler(%1,%2,%3) luup.device=%4", lul_request, lul_parameters, lul_outputformat, luup.device)
     local action = lul_parameters['action'] or lul_parameters['command'] or ""
+    local deviceNum = tonumber( lul_parameters['device'], 10 ) or luup.device
     if action == "debug" then
-        debugMode = not debugMode
-        return "Debug is now " .. tostring(debugMode), "text/plain"
+        local err,msg,job,args = luup.call_action( MYSID, "SetDebug", { debug=1 }, deviceNum )
+        return string.format("Device #%s result: %s, %s, %s, %s", tostring(deviceNum), tostring(err), tostring(msg), tostring(job), dump(args))
     end
 
     if action:sub( 1, 3 ) == "ISS" then
@@ -1195,7 +1204,7 @@ function requestHandler(lul_request, lul_parameters, lul_outputformat)
     return "<html><head><title>" .. _PLUGIN_NAME .. " Request Handler"
         .. "</title></head><body bgcolor='white'>Request format: <tt>http://" .. (luup.attr_get( "ip", 0 ) or "...")
         .. "/port_3480/data_request?id=lr_" .. lul_request 
-        .. "&action=</tt><p>Actions: status, debug, ISS"
+        .. "&action=...</tt><p>Actions: status<br>debug&device=<i>devicenumber</i><br>ISS"
         .. "<p>Imperihome ISS URL: <tt>...&action=ISS&path=</tt><p>Documentation: <a href='"
         .. _PLUGIN_URL .. "' target='_blank'>" .. _PLUGIN_URL .. "</a></body></html>"
         , "text/html"

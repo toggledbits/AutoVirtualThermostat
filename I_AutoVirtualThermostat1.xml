@@ -205,5 +205,12 @@ luup.log("urn:upnp-org:serviceId:TemperatureSetpoint1_Cool/SetCurrentSetpoint")
                 luup.call_action( "urn:upnp-org:serviceId:TemperatureSetpoint1", "GetCurrentSetpoint", lul_settings, lul_device ) -- call other service, pass all
             </run>
         </action>
+        <action>
+            <serviceId>urn:toggledbits-com:serviceId:AutoVirtualThermostat1</serviceId>
+            <name>SetDebug</name>
+            <run>
+                AutoVirtualThermostat.actionSetDebug( lul_device, lul_settings.debug )
+            </run>
+        </action>
     </actionList>
 </implementation>

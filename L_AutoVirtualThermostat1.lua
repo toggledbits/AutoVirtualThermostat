@@ -8,11 +8,11 @@
 module("L_AutoVirtualThermostat1", package.seeall)
 
 local _PLUGIN_NAME = "AutoVirtualThermostat"
-local _PLUGIN_VERSION = "1.2"
+local _PLUGIN_VERSION = "1.3"
 local _PLUGIN_URL = "http://www.toggledbits.com/avt"
 local _CONFIGVERSION = 010101
 
-local debugMode = false
+local debugMode = true
 
 local MYSID = "urn:toggledbits-com:serviceId:AutoVirtualThermostat1"
 local MYTYPE = "urn:schemas-toggledbits-com:device:AutoVirtualThermostat:1"
@@ -659,9 +659,8 @@ local function checkSensors(dev)
                 if blevel == nil and parentDev ~= nil then 
                     bsource = parentDev
                     blevel,btime = luup.variable_get( HADEVICE_SID, "BatteryLevel", parentDev )
-                    if blevel ~= nil then blevel = tonumber( blevel, 10 ) end
-                    if btime ~= nil then btime = tonumber( btime, 10 ) end
                 end
+                if btime ~= nil then btime = tonumber( btime, 10 ) end
                 if btime == nil then
                     btime = getVarNumeric( "BatteryDate", nil, bsource, HADEVICE_SID )
                 end
@@ -673,11 +672,17 @@ local function checkSensors(dev)
                     L("Sensor %1 (%2) ineligible, last battery report %3 is more than %4 ago", 
                         ts, luup.devices[tnum].description, btime, maxSensorBattery)
                 end
-                if blevel ~= nil and minBatteryLevel > 0 and blevel < minBatteryLevel then
-                    -- We have a battery level, and it's out of limit.
-                    valid = false
-                    L("Sensor %1 (%2) ineligible, battery level %1 < allowed minimum %2",
-                        ts, luup.devices[tnum].description, blevel, minBatteryLevel)
+                if minBatteryLevel > 0 and blevel ~= nil then
+                    local bl = tonumber( blevel, 10 )
+                    if bl == nil then 
+                        valid = false
+                        L("Sensor %1 (%2) ineligible, invalid battery level %1", blevel) 
+                    elseif bl < minBatteryLevel then
+                        -- Out of limit
+                        valid = false
+                        L("Sensor %1 (%2) ineligible, battery level %1 < allowed minimum %2",
+                            ts, luup.devices[tnum].description, bl, minBatteryLevel)
+                    end
                 end
             end
             if valid then
@@ -1297,7 +1302,7 @@ local function plugin_runOnce(dev)
         luup.variable_set(HADEVICE_SID, "ModeSetting", "1:;2:;3:;4:", dev)
         luup.variable_set(HADEVICE_SID, "Commands", "thermostat_mode_off,thermostat_mode_heat,thermostat_mode_cool,thermostat_mode_auto,thermostat_mode_eco", dev)
     end
-    
+
     -- No matter what happens above, if our versions don't match, force that here/now.
     if (rev ~= _CONFIGVERSION) then
         luup.variable_set(MYSID, "Version", _CONFIGVERSION, dev)

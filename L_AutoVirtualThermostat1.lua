@@ -1113,10 +1113,10 @@ function requestHandler(lul_request, lul_parameters, lul_outputformat)
                     table.insert( issinfo, issKeyVal( "availablemodes", "Off,Heat,Cool,Auto" ) )
                     table.insert( issinfo, issKeyVal( "availablefanmodes", "Auto,On,Periodic" ) )
                     table.insert( issinfo, issKeyVal( "availableenergymodes", "Comfort,Economy" ) )
+                    table.insert( issinfo, issKeyVal( "defaultIcon", "https://www.toggledbits.com/avt/assets/vt_mode_auto.png" ) )
                     local dev = { id=tostring(lnum), 
                         name=ldev.description or ("#" .. lnum), 
                         ["type"]="DevThermostat", 
-                        defaultIcon="https://www.toggledbits.com/avt/assets/vt_mode_auto.png",
                         params=issinfo }
                     if ldev.room_num ~= nil and ldev.room_num ~= 0 then dev.room = tostring(ldev.room_num) end
                     table.insert( devices, dev )
@@ -1128,7 +1128,7 @@ function requestHandler(lul_request, lul_parameters, lul_outputformat)
             dev = tonumber( dev, 10 )
             if dev ~= nil and act ~= nil then
                 act = string.upper( act )
-                D("request_handler() handling action path %1, dev %2, action %3, param %4", path, dev, act, p )
+                D("requestHandler() handling action path %1, dev %2, action %3, param %4", path, dev, act, p )
                 if act == "SETMODE" then
                     local newMode = map( { OFF="Off",HEAT="HeatOn",COOL="CoolOn",AUTO="AutoChangeOver" }, string.upper( p or "" ) )
                     actionSetModeTarget( dev, newMode )

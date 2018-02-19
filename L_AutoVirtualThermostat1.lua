@@ -8,11 +8,11 @@
 module("L_AutoVirtualThermostat1", package.seeall)
 
 local _PLUGIN_NAME = "AutoVirtualThermostat"
-local _PLUGIN_VERSION = "1.3"
+local _PLUGIN_VERSION = "1.3.1"
 local _PLUGIN_URL = "http://www.toggledbits.com/avt"
 local _CONFIGVERSION = 010101
 
-local debugMode = false
+local debugMode = true
 
 local MYSID = "urn:toggledbits-com:serviceId:AutoVirtualThermostat1"
 local MYTYPE = "urn:schemas-toggledbits-com:device:AutoVirtualThermostat:1"
@@ -629,19 +629,19 @@ local function checkSensors(dev)
     local now = os.time()
     local maxSensorDelay = getVarNumeric( "MaxSensorDelay", 3600, dev )
     local maxSensorBattery = getVarNumeric( "MaxSensorBattery", 7200, dev )
-    local minBatteryLevel = getVarNumeric( "MinBatteryLevel", 20, dev )
+    local minBatteryLevel = getVarNumeric( "MinBatteryLevel", 1, dev )
     for _,ts in ipairs(tst) do
         local tnum = tonumber(ts,10)
         if tnum ~= nil and luup.devices[tnum] ~= nil then
             local temp, since, rawTemp
-            local parentDev = luup.devices[tnum].device_num_parent
             rawTemp,since = luup.variable_get( TEMPSENS_SID, "CurrentTemperature", tnum )
             if rawTemp ~= nil then temp = tonumber(rawTemp, 10) else temp = nil end
             since = tonumber(since or "", 10) or 0
             D("checkSensors() temp sensor %1 (%2) temp %3 since %4 (raw %5)", 
                 ts, luup.devices[tnum].description, temp, since, rawTemp)
             local valid = true -- innocent until proven guilty
-            if temp == nil then
+            -- Did we get a valid temperature reading?
+            if valid and temp == nil then
                 valid = false
                 L("Sensor %1 (%2) ineligible, invalid/non-numeric value: %3",
                     ts, luup.devices[tnum].description, rawTemp)
@@ -652,37 +652,33 @@ local function checkSensors(dev)
                     ts, luup.devices[tnum].description, since, maxSensorDelay)
             end
             if valid and (maxSensorBattery > 0 or minBatteryLevel > 0) then
-                -- Check battery level and timestamp. Many sensors use child devices, so if our
-                -- specified device doesn't have info for us, look at its parent.
+                -- Check battery level and report date. Many sensors use child devices, so if our
+                -- specified device doesn't have info for us, look at its parent. Reliance here is
+                -- based on http://wiki.micasaverde.com/index.php/Luup_UPnP_Variables_and_Actions#HaDevice1
+                local parentDev = luup.devices[tnum].device_num_parent or 0
                 local bsource = tnum
-                local blevel,btime = luup.variable_get( HADEVICE_SID, "BatteryLevel", tnum )
-                if blevel == nil and parentDev ~= nil then 
+                local blevel = getVarNumeric( "BatteryLevel", nil, tnum, HADEVICE_SID )
+                if blevel == nil and parentDev ~= 0 then 
                     bsource = parentDev
-                    blevel,btime = luup.variable_get( HADEVICE_SID, "BatteryLevel", parentDev )
+                    blevel = getVarNumeric( "BatteryLevel", nil, parentDev, HADEVICE_SID )
                 end
-                if btime ~= nil then btime = tonumber( btime, 10 ) end
-                if btime == nil then
-                    btime = getVarNumeric( "BatteryDate", nil, bsource, HADEVICE_SID )
-                end
+                -- Get battery date from wherever we ended up getting battery level.
+                local bdate = getVarNumeric( "BatteryDate", nil, bsource, HADEVICE_SID )
                 D("checkSensors() sensor %1 (%2) battery level %3 timestamp %4",
-                    ts, luup.devices[tnum].description, blevel, btime)
-                if btime ~= nil and maxSensorBattery > 0 and ((now-btime) > maxSensorBattery) then
+                    ts, luup.devices[tnum].description, blevel, bdate)
+                -- Check report date first. Must be recent (if we're checking).
+                if bdate ~= nil and maxSensorBattery > 0 and ((now-bdate) > maxSensorBattery) then
                     -- We have a timestamp, and it's out of limit
                     valid = false
                     L("Sensor %1 (%2) ineligible, last battery report %3 is more than %4 ago", 
-                        ts, luup.devices[tnum].description, btime, maxSensorBattery)
+                        ts, luup.devices[tnum].description, bdate, maxSensorBattery)
                 end
-                if minBatteryLevel > 0 and blevel ~= nil then
-                    local bl = tonumber( blevel, 10 )
-                    if bl == nil then 
-                        valid = false
-                        L("Sensor %1 (%2) ineligible, invalid battery level %1", blevel) 
-                    elseif bl < minBatteryLevel then
-                        -- Out of limit
-                        valid = false
-                        L("Sensor %1 (%2) ineligible, battery level %1 < allowed minimum %2",
-                            ts, luup.devices[tnum].description, bl, minBatteryLevel)
-                    end
+                -- If date is OK, check level (if checking level)
+                if valid and minBatteryLevel > 0 and blevel ~= nil and blevel < minBatteryLevel then
+                    -- Out of limit
+                    valid = false
+                    L("Sensor %1 (%2) ineligible, battery level %3 < allowed minimum %4",
+                        ts, luup.devices[tnum].description, blevel, minBatteryLevel)
                 end
             end
             if valid then

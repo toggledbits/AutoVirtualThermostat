@@ -85,5 +85,15 @@
                 </argument>
             </argumentList>
         </action>
+        <action>
+            <name>getinfo</name>
+            <argumentList>
+                <argument>
+                    <name>eventList</name>
+                    <direction>out</direction>
+                    <relatedStateVariable>int_el</relatedStateVariable>
+                </argument>
+            </argumentList>
+        </action>
     </actionList>
 </scpd>

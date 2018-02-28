@@ -14,7 +14,7 @@
         <modelName>Auto Virtual Thermostat</modelName>
         <handleChildren>0</handleChildren>
         <Category_Num>5</Category_Num>
-        <Subcategory_Num>1</Subcategory_Num>
+        <SubCategory_Num>1</SubCategory_Num>
         <serviceList>
           <service>
             <serviceType>urn:schemas-toggledbits-com:service:AutoVirtualThermostat:1</serviceType>

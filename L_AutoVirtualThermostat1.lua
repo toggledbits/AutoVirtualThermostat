@@ -10,7 +10,7 @@ module("L_AutoVirtualThermostat1", package.seeall)
 local _PLUGIN_NAME = "AutoVirtualThermostat"
 local _PLUGIN_VERSION = "1.4"
 local _PLUGIN_URL = "http://www.toggledbits.com/avt"
-local _CONFIGVERSION = 010102
+local _CONFIGVERSION = 010103
 
 local debugMode = false
 local MAXEVENTS = 100
@@ -75,10 +75,10 @@ local function L(msg, ...)
     local str
     local level = 50
     if type(msg) == "table" then
-        str = msg["prefix"] .. msg["msg"]
-        level = msg["level"] or level
+        str = tostring(msg.prefix or _PLUGIN_NAME) .. ": " .. tostring(msg.msg)
+        level = msg.level or level
     else
-        str = _PLUGIN_NAME .. ": " .. msg
+        str = _PLUGIN_NAME .. ": " .. tostring(msg)
     end
     str = string.gsub(str, "%%(%d+)", function( n )
             n = tonumber(n, 10)
@@ -865,6 +865,7 @@ local function checkSensors(dev)
     updateDisplayStatus( dev )
 end
 
+-- Transition between states.
 local function transition( dev, oldTarget, newTarget )
     D("transition(%1,%2,%3)", dev, oldTarget, newTarget)
 
@@ -897,6 +898,7 @@ local function transition( dev, oldTarget, newTarget )
     end
 end
 
+-- Watch callback.
 function varChanged( dev, sid, var, oldVal, newVal )
     D("varChanged(%1,%2,%3,%4,%5) luup.device is %6", dev, sid, var, oldVal, newVal, luup.device)
     assert(var ~= nil) -- nil if service or device watch (can happen on openLuup)
@@ -925,7 +927,15 @@ function varChanged( dev, sid, var, oldVal, newVal )
         elseif var == "ModeStatus" then
             updateDisplayStatus(luup.device)
         end
-    elseif sid == MYSID or sid == TEMPSENS_SID then
+    elseif sid == TEMPSENS_SID then
+        checkSensors(luup.device)
+    elseif sid == MYSID then
+        if var == "SetpointHeating" then
+            -- Blech. I hate this hacked crap. But it's what external UIs have come to expect...
+            luup.variable_set( SETPOINT_SID .. "_Heat", "CurrentSetpoint", newVal, dev )
+        elseif var == "SetpointCooling" then
+            luup.variable_set( SETPOINT_SID .. "_Cool", "CurrentSetpoint", newVal, dev )
+        end
         checkSensors(luup.device)
     elseif sid == SWITCH_SID then
         L("Device %1 (%2) changed %3 from %4 to %5", dev, luup.devices[dev].description, var, oldVal, newVal)
@@ -1014,6 +1024,10 @@ function actionSetCurrentSetpoint( dev, newSP, whichSP )
 
     local modeStatus = luup.variable_get( OPMODE_SID, "ModeStatus", dev ) or "Off"
 
+    -- Note that we are watching SetpointHeating and SetpointCooling, so changes
+    -- here will cause the watch callback to trigger and update some other things,
+    -- and cause a sensor check (fast reacting to new setpoint).
+    
     local heatSP = getVarNumeric( "SetpointHeating", sysTemps.default, dev, MYSID )
     local coolSP = getVarNumeric( "SetpointCooling", sysTemps.default, dev, MYSID )
 
@@ -1204,7 +1218,7 @@ function requestHandler(lul_request, lul_parameters, lul_outputformat)
             devices={}
         }
         for k,v in pairs( luup.devices ) do
-            if v.device_type == MYTYPE then
+            if luup.device_supports_service( MYSID, k ) then
                 local devinfo = getDevice( k, luup.device, v ) or {}
                 local d = getVarNumeric( "FanDevice", 0, k )
                 if d ~= 0 then devinfo.fandevice = getDevice( d, luup.device ) or {} end
@@ -1357,6 +1371,13 @@ local function plugin_runOnce(dev)
         luup.variable_set(OPMODE_SID, "AutoMode", "", dev)
         luup.inet.wget("http://127.0.0.1/port_3480/data_request?id=variableset&DeviceNum=" .. dev .. "&serviceId=" .. OPMODE_SID .. "&Variable=AutoMode&Value=")
     end
+    
+    if rev < 010103 then
+        D("runOnce() updating config for rev 010103")
+        luup.attr_set( "device_type", MYTYPE, dev ) -- hoo boy...
+        luup.variable_set(SETPOINT_SID .. "_Heat", "CurrentSetpoint", luup.variable_get( MYSID, "SetpointHeating", dev ), dev )
+        luup.variable_set(SETPOINT_SID .. "_Cool", "CurrentSetpoint", luup.variable_get( MYSID, "SetpointCooling", dev ), dev )
+    end
 
     -- No matter what happens above, if our versions don't match, force that here/now.
     if (rev ~= _CONFIGVERSION) then
@@ -1380,6 +1401,10 @@ function plugin_init(dev)
     D("init(%1)", dev)
     L("starting plugin version %1 device %2", _PLUGIN_VERSION, dev)
 
+    if luup.attr_get("subcategory_num", dev) ~= "1" then
+        luup.attr_set("subcategory_num", 1, dev)
+    end
+    
     -- Check for ALTUI and OpenLuup
     for k,v in pairs(luup.devices) do
         if v.device_type == "urn:schemas-upnp-org:device:altui:1" then
@@ -1463,7 +1488,7 @@ function plugin_init(dev)
     -- sorted later.
     if not restoreDeviceState( dev ) then -- attempt to restore device state, save across luup reloads
         L("Can't reload device state or expired, resetting...")
-        goIdle()
+        goIdle(dev)
     else
         local tt = luup.variable_get(OPMODE_SID, "ModeTarget", dev) or "Off"
         local st = luup.variable_get(OPMODE_SID, "ModeStatus", dev) or "Off"

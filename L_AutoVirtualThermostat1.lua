@@ -781,11 +781,11 @@ local function checkSensors(dev)
     local differential = getVarNumeric("Differential", 1.5, dev)
 
     -- Check schedule
-    if not checkSchedule( dev ) then 
+    if not checkSchedule( dev ) then
         if modeStatus == "HeatOn" or modeStatus == "CoolOn" then
             goIdle(dev, modeStatus)
         end
-        return 
+        return
     end
 
     -- Check current operating mode.
@@ -1029,7 +1029,7 @@ function actionSetCurrentSetpoint( dev, newSP, whichSP )
     -- Note that we are watching SetpointHeating and SetpointCooling, so changes
     -- here will cause the watch callback to trigger and update some other things,
     -- and cause a sensor check (fast reacting to new setpoint).
-    
+
     local heatSP = getVarNumeric( "SetpointHeating", sysTemps.default, dev, MYSID )
     local coolSP = getVarNumeric( "SetpointCooling", sysTemps.default, dev, MYSID )
 
@@ -1234,7 +1234,7 @@ function requestHandler(lul_request, lul_parameters, lul_outputformat)
                     table.insert( ts, getDevice( tonumber(m,10) or 0, luup.device ) )
                 end
                 devinfo.tempsensors = ts
-                
+
                 -- Rigamarole to get instance-specified device data... must be passed through state variables (uck)
                 local rc,rs,job,rargs = luup.call_action( MYSID, "getinfo", {}, k )
                 if rc == 0 then
@@ -1249,7 +1249,7 @@ function requestHandler(lul_request, lul_parameters, lul_outputformat)
 
                 -- Clean up
                 luup.variable_set( MYSID, "int_el", "", k )
-                
+
             end
         end
         return dkjson.encode( st ), "application/json"
@@ -1373,7 +1373,7 @@ local function plugin_runOnce(dev)
         luup.variable_set(OPMODE_SID, "AutoMode", "", dev)
         luup.inet.wget("http://127.0.0.1/port_3480/data_request?id=variableset&DeviceNum=" .. dev .. "&serviceId=" .. OPMODE_SID .. "&Variable=AutoMode&Value=")
     end
-    
+
     if rev < 010103 then
         D("runOnce() updating config for rev 010103")
         luup.attr_set( "device_type", MYTYPE, dev ) -- hoo boy...
@@ -1406,7 +1406,7 @@ function plugin_init(dev)
     if luup.attr_get("subcategory_num", dev) ~= "1" then
         luup.attr_set("subcategory_num", 1, dev)
     end
-    
+
     -- Check for ALTUI and OpenLuup
     for k,v in pairs(luup.devices) do
         if v.device_type == "urn:schemas-upnp-org:device:altui:1" then
@@ -1485,8 +1485,8 @@ function plugin_init(dev)
     watchDevice("FanDevice", dev)
     watchDevice("HeatingDevice", dev)
     watchDevice("CoolingDevice", dev)
-    
-    -- Make sure devices are doing what we expect for current status. The rest will be 
+
+    -- Make sure devices are doing what we expect for current status. The rest will be
     -- sorted later.
     if not restoreDeviceState( dev ) then -- attempt to restore device state, save across luup reloads
         L("Can't reload device state or expired, resetting...")
@@ -1509,7 +1509,7 @@ function plugin_init(dev)
             goIdle(dev, st)
         end
     end
-    
+
     -- Seed the recurring "sense" task.
     scheduleTask( dev, { ['type']="sense", func=checkSensors, dev=dev, ['time']=os.time()+30, recurring=getVarNumeric("Interval", 60, dev) } )
 

@@ -689,10 +689,12 @@ local function checkSensors(dev)
                 ts, luup.devices[tnum].description, temp, since, rawTemp)
             local valid = true -- innocent until proven guilty
             -- Not all devices signal CommFailure, so default to assume OK.
-            local cflag = getVarNumeric( "CommFailure", 0, tnum, HADEVICE_SID )
-            if cflag ~= 0 then
-                valid = false
-                L("Sensor %1 (%2) ineligible, comm failure status %3", ts, luup.devices[tnum], cflag)
+            if getVarNumeric( "IgnoreCommFailure", 0, dev ) == 0 then
+                local cflag = getVarNumeric( "CommFailure", 0, tnum, HADEVICE_SID )
+                if cflag ~= 0 then
+                    valid = false
+                    L("Sensor %1 (%2) ineligible, comm failure status %3", ts, luup.devices[tnum], cflag)
+                end
             end
             -- Did we get a valid temperature reading?
             if valid and temp == nil then

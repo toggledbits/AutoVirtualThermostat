@@ -109,6 +109,8 @@ var AutoVirtualThermostat = (function(api) {
             html += "<style>";
             html += ".tb-about { margin-top: 24px; }";
             html += ".color-green { color: #00a652; }";
+            html += '.tb-begging { margin-top: 12px; color: #ff6600; }';
+            html += '.tb-links { margin-top: 12px; font-size: 0.8em; }';
             html += "</style>";
             html += '<link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">';
 
@@ -198,10 +200,19 @@ var AutoVirtualThermostat = (function(api) {
             html += window.location.hostname + '/port_3480/data_request?id=reload&r=' + Math.random() + '" target="_blank">reload Luup</a> for your changes to take effect.</div>';
 
             html += '<div class="clearfix"></div>';
-            html += '<div class="tb-about">Auto Virtual Thermostat ver 1.3 &#169; 2017,2018 Patrick H. Rigney, All Rights Reserved.<br/>';
+            html += '<div class="tb-about">Auto Virtual Thermostat ver 1.4 &#169; 2017,2018 Patrick H. Rigney, All Rights Reserved.<br/>';
             html += 'For documentation, support, and license information, please see <a href="http://www.toggledbits.com/avt/" target="_blank">http://www.toggledbits.com/avt/</a>';
             html += ' Your continued use of this software constitutes acceptance of and agreement to the terms of the license without limitation or exclusion.';
             html += ' CAUTION! This plugin is not to be used to control unattended devices!';
+            html += '<p class="tb-begging"><b>Find Auto Virtual Thermostat useful?</b> Please consider a <a target="_blank" href="https://www.makersupport.com/toggledbits">one-time tip, or monthly $1 donation</a>, to support my continuing work on this and other plugins. I am grateful for any amount you choose to give!</p>';
+            html += '</div>';
+            
+            html += '<div class="tb-links">Tech Support links: <a target="_blank" href="/port_3480/data_request?id=variableset&serviceId=urn:toggledbits-com:serviceId:AutoVirtualThermostat1&DeviceNum=' 
+                + myDevice + '&Variable=DebugMode&Value=1000">Debug ON</a>';
+            html += ' &#149; <a target="_blank" href="/port_3480/data_request?id=reload">Reload Luup</a>';
+            html += ' &#149; <a target="_blank" href="/port_3480/data_request?id=lr_AutoVirtualThermostat&action=status">Status Data</a>';
+            html += ' &#149; <a target="_blank" href="/port_3480/data_request?id=variableset&serviceId=urn:toggledbits-com:serviceId:AutoVirtualThermostat1&DeviceNum=' 
+                + myDevice + '&Variable=DebugMode&Value=">Debug OFF</a>';
             html += '</div>';
 
             // Push generated HTML to page

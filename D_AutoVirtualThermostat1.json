@@ -7,7 +7,6 @@
                 "variable": "Failure",
                 "operator": "!=",
                 "value": "0",
-                "subcategory_num": 0
             }]
         },
         {
@@ -17,7 +16,6 @@
                 "variable": "ModeStatus",
                 "operator": "==",
                 "value": "HeatOn",
-                "subcategory_num": 0
             }]
         },
         {
@@ -27,7 +25,6 @@
                 "variable": "ModeStatus",
                 "operator": "==",
                 "value": "CoolOn",
-                "subcategory_num": 0
             }]
         },
         {
@@ -37,7 +34,6 @@
                 "variable": "ModeStatus",
                 "operator": "==",
                 "value": "Off",
-                "subcategory_num": 0
             }]
         }
     ],
@@ -139,7 +135,7 @@
                             "Value": "Off"
                         }]
                     },
-                    "ControlCode": "hvac_off"
+                    "ControlCode": "thermostat_mode_off"
                 },
                 {
                     "ControlGroup": "1",
@@ -167,7 +163,7 @@
                             "Value": "AutoChangeOver"
                         }]
                     },
-                    "ControlCode": "hvac_auto"
+                    "ControlCode": "thermostat_mode_auto"
                 },
                 {
                     "ControlGroup": "1",
@@ -199,7 +195,7 @@
                             "Value": "CoolOn"
                         }]
                     },
-                    "ControlCode": "hvac_cool"
+                    "ControlCode": "thermostat_mode_cool"
                 },
                 {
                     "ControlGroup": "1",
@@ -227,7 +223,7 @@
                             "Value": "HeatOn"
                         }]
                     },
-                    "ControlCode": "hvac_heat"
+                    "ControlCode": "thermostat_mode_heat"
                 },
                 
                 
@@ -289,7 +285,7 @@
                                }
                             ]
                          },
-                         "ControlCode":"avt_emode_eco"
+                         "ControlCode":"thermostat_mode_eco"
                       }
                    ]
                 },
@@ -510,8 +506,8 @@
                         "text": "&deg;_TEMPERATURE_FORMAT_"
                     },
                     "Display": {
-                        "Top": 120,
-                        "Left": 120,
+                        "Top": 90,
+                        "Left": 450,
                         "Width": 100,
                         "Height": 25,
                         "Service": "urn:toggledbits-com:serviceId:AutoVirtualThermostat1",
@@ -988,7 +984,7 @@
         {
             "id": 12,
             "label": {
-                "lang_tag": "vt_failed",
+                "lang_tag": "vt_recovery",
                 "text": "Thermostat recovers from failed state"
             },
             "serviceId": "urn:toggledbits-com:serviceId:AutoVirtualThermostat1",
@@ -1002,3 +998,4 @@
     ],
     "device_type": "urn:schemas-toggledbits-com:device:AutoVirtualThermostat:1"
 }
+

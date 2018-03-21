@@ -1154,7 +1154,7 @@ function requestHandler(lul_request, lul_parameters, lul_outputformat)
                     table.insert( issinfo, issKeyVal( "availablemodes", "Off,Heat,Cool,Auto" ) )
                     table.insert( issinfo, issKeyVal( "availablefanmodes", "Auto,On,Periodic" ) )
                     table.insert( issinfo, issKeyVal( "availableenergymodes", "Comfort,Economy" ) )
-                    table.insert( issinfo, issKeyVal( "defaultIcon", "https://www.toggledbits.com/avt/assets/vt_mode_auto.png" ) )
+                    table.insert( issinfo, issKeyVal( "defaultIcon", "https://www.toggledbits.com/assets/avt/vt_mode_auto.png" ) )
                     local dev = { id=tostring(lnum),
                         name=ldev.description or ("#" .. lnum),
                         ["type"]="DevThermostat",

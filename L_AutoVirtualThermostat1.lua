@@ -8,7 +8,7 @@
 module("L_AutoVirtualThermostat1", package.seeall)
 
 local _PLUGIN_NAME = "AutoVirtualThermostat"
-local _PLUGIN_VERSION = "1.4"
+local _PLUGIN_VERSION = "1.5"
 local _PLUGIN_URL = "http://www.toggledbits.com/avt"
 local _CONFIGVERSION = 010103
 
@@ -1154,7 +1154,7 @@ function requestHandler(lul_request, lul_parameters, lul_outputformat)
                     table.insert( issinfo, issKeyVal( "availablemodes", "Off,Heat,Cool,Auto" ) )
                     table.insert( issinfo, issKeyVal( "availablefanmodes", "Auto,On,Periodic" ) )
                     table.insert( issinfo, issKeyVal( "availableenergymodes", "Comfort,Economy" ) )
-                    table.insert( issinfo, issKeyVal( "defaultIcon", "https://www.toggledbits.com/avt/assets/vt_mode_auto.png" ) )
+                    table.insert( issinfo, issKeyVal( "defaultIcon", "https://www.toggledbits.com/assets/avt/vt_mode_auto.png" ) )
                     local dev = { id=tostring(lnum),
                         name=ldev.description or ("#" .. lnum),
                         ["type"]="DevThermostat",

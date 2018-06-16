@@ -204,7 +204,7 @@ var AutoVirtualThermostat = (function(api) {
             html += 'For documentation, support, and license information, please see <a href="http://www.toggledbits.com/avt/" target="_blank">http://www.toggledbits.com/avt/</a>';
             html += ' Your continued use of this software constitutes acceptance of and agreement to the terms of the license without limitation or exclusion.';
             html += ' CAUTION! This plugin is not to be used to control unattended devices!';
-            html += '<p class="tb-begging"><b>Find Auto Virtual Thermostat useful?</b> Please consider a <a target="_blank" href="https://www.makersupport.com/toggledbits">one-time tip, or monthly $1 donation</a>, to support my continuing work on this and other plugins. I am grateful for any amount you choose to give!</p>';
+            html += '<p class="tb-begging"><b>Find Auto Virtual Thermostat useful?</b> Please consider a <a target="_blank" href="https://www.toggledbits.com/donate">a small donation</a>, to support my continuing work on this and other plugins. I am grateful for any amount you choose to give!</p>';
             html += '</div>';
             
             html += '<div class="tb-links">Tech Support links: <a target="_blank" href="/port_3480/data_request?id=variableset&serviceId=urn:toggledbits-com:serviceId:AutoVirtualThermostat1&DeviceNum=' 

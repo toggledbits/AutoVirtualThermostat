@@ -117,18 +117,19 @@ var AutoVirtualThermostat = (function(api) {
             // Make our own list of devices, sorted by room.
             var devices = api.getListOfDevices();
             var rooms = [];
-            var noroom = { "id": "0", "name": "No Room", "devices": [] };
+            var noroom = { "id": 0, "name": "No Room", "devices": [] };
             rooms[noroom.id] = noroom;
             for (i=0; i<devices.length; i+=1) {
-                var roomid = devices[i].room || "0";
+                var devobj = api.cloneObject( devices[i] ); // clone, we're modifying
+                devobj.friendlyName = "#" + devobj.id + " " + devobj.name;
+                var roomid = devobj.room || 0;
                 var roomObj = rooms[roomid];
                 if ( roomObj === undefined ) {
-                    roomObj = api.cloneObject(api.getRoomObject(roomid));
+                    roomObj = api.cloneObject( api.getRoomObject( roomid ) );
                     roomObj.devices = [];
                     rooms[roomid] = roomObj;
                 }
-                devices[i].friendlyName = "#" + devices[i].id + " " + devices[i].name;
-                roomObj.devices.push(devices[i]);
+                roomObj.devices.push( devobj );
             }
             var r = rooms.sort(
                 // Special sort for room name -- sorts "No Room" last

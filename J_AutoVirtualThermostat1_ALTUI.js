@@ -164,7 +164,7 @@ var AutoVirtualThermostat_ALTUI = ( function( window, undefined ) {
 			html += "</div>";
 			html += "<div class='row'>";
 				html += "<div class='col-12 col-sm-12'>";
-                html += '<b>Find AutoVirtualThermostat useful?</b> Please consider supporting the project with <a href="https://www.toggledbits.com/donate" target="_blank">a one-time &ldquo;tip&rdquo;, or a monthly US$1 donation</a>. I am grateful for any support you choose to give!<br/>&nbsp;<br/>Auto Virtual Thermostat ver 1.2 &#169; 2017,2018 Patrick H. Rigney, All Rights Reserved. For documentation, support, and license information, please see <a href="http://www.toggledbits.com/avt/" target="_blank">http://www.toggledbits.com/avt/</a> Your continued use of this software constitutes acceptance of and agreement to the terms of the license without limitation or exclusion. CAUTION! This plugin is not to be used to control unattended devices!';
+                html += '<b>Find AutoVirtualThermostat useful?</b> Please consider supporting the project with <a href="https://www.toggledbits.com/donate" target="_blank">a one-time &ldquo;tip&rdquo;, or a monthly US$1 donation</a>. I am grateful for any support you choose to give!<br/>&nbsp;<br/>Auto Virtual Thermostat ver 1.2 &#169; 2017,2018 Patrick H. Rigney, All Rights Reserved. For documentation, support, and license information, please see <a href="https://www.toggledbits.com/avt/" target="_blank">https://www.toggledbits.com/avt/</a> Your continued use of this software constitutes acceptance of and agreement to the terms of the license without limitation or exclusion. CAUTION! This plugin is not to be used to control unattended devices!';
                 html += "</div>";
 			html += "</div>";
 		html += "</div>";

@@ -8,17 +8,23 @@
         -- Reference: http://wiki.micasaverde.com/index.php/Luup_UPnP_Variables_and_Actions#HVAC_UserOperatingMode1
         -- Reference: http://upnp.org/specs/ha/UPnP-ha-HVAC_UserOperatingMode-v1-Service.pdf
         -- -------------------------------------------------------------------------------------------------------------------------
-        function startupAVT(dev)
+        function avtStart(dev)
             luup.log("AutoVirtualThermostat Plugin START-UP!")
             AutoVirtualThermostat = require("L_AutoVirtualThermostat1")
-            avtRunScheduledTask = AutoVirtualThermostat.runTask
-            avtVarChanged = AutoVirtualThermostat.varChanged
             avtRequestHandler = AutoVirtualThermostat.requestHandler
             luup.register_handler("avtRequestHandler", "AutoVirtualThermostat")
             return AutoVirtualThermostat.plugin_init(dev)
         end
+        
+        function avtWatchCallback( dev, svc, var, oldVal, newVal )
+            AutoVirtualThermostat.handleWatch( dev, svc, var, oldVal, newVal, luup.device )
+        end
+        
+        function avtDelayCallback( parm )
+            AutoVirtualThermostat.runTask( parm, luup.device )
+        end
     </functions>
-    <startup>startupAVT</startup>
+    <startup>avtStart</startup>
     <actionList>
         <action>
             <serviceId>urn:upnp-org:serviceId:HVAC_UserOperatingMode1</serviceId>

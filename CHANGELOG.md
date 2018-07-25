@@ -2,6 +2,8 @@
 
 ## Version 1.6 (develop branch) ##
 
+* openLuup loads modules differently from Vera Luup, so work out how to get AVT working on openLuup when multiple device instances are created (differences don't matter if only one device).
+
 ## Version 1.5 (released) ##
 
 * Change image URLs to meet new asset location.

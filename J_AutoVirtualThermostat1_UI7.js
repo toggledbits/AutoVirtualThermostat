@@ -117,18 +117,19 @@ var AutoVirtualThermostat = (function(api) {
             // Make our own list of devices, sorted by room.
             var devices = api.getListOfDevices();
             var rooms = [];
-            var noroom = { "id": "0", "name": "No Room", "devices": [] };
+            var noroom = { "id": 0, "name": "No Room", "devices": [] };
             rooms[noroom.id] = noroom;
             for (i=0; i<devices.length; i+=1) {
-                var roomid = devices[i].room || "0";
+                var devobj = api.cloneObject( devices[i] ); // clone, we're modifying
+                devobj.friendlyName = "#" + devobj.id + " " + devobj.name;
+                var roomid = devobj.room || 0;
                 var roomObj = rooms[roomid];
                 if ( roomObj === undefined ) {
-                    roomObj = api.cloneObject(api.getRoomObject(roomid));
+                    roomObj = api.cloneObject( api.getRoomObject( roomid ) );
                     roomObj.devices = [];
                     rooms[roomid] = roomObj;
                 }
-                devices[i].friendlyName = "#" + devices[i].id + " " + devices[i].name;
-                roomObj.devices.push(devices[i]);
+                roomObj.devices.push( devobj );
             }
             var r = rooms.sort(
                 // Special sort for room name -- sorts "No Room" last
@@ -204,7 +205,7 @@ var AutoVirtualThermostat = (function(api) {
             html += 'For documentation, support, and license information, please see <a href="http://www.toggledbits.com/avt/" target="_blank">http://www.toggledbits.com/avt/</a>';
             html += ' Your continued use of this software constitutes acceptance of and agreement to the terms of the license without limitation or exclusion.';
             html += ' CAUTION! This plugin is not to be used to control unattended devices!';
-            html += '<p class="tb-begging"><b>Find Auto Virtual Thermostat useful?</b> Please consider a <a target="_blank" href="https://www.makersupport.com/toggledbits">one-time tip, or monthly $1 donation</a>, to support my continuing work on this and other plugins. I am grateful for any amount you choose to give!</p>';
+            html += '<p class="tb-begging"><b>Find Auto Virtual Thermostat useful?</b> Please consider a <a target="_blank" href="https://www.toggledbits.com/donate">a small donation</a>, to support my continuing work on this and other plugins. I am grateful for any amount you choose to give!</p>';
             html += '</div>';
             
             html += '<div class="tb-links">Tech Support links: <a target="_blank" href="/port_3480/data_request?id=variableset&serviceId=urn:toggledbits-com:serviceId:AutoVirtualThermostat1&DeviceNum=' 

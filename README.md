@@ -11,20 +11,21 @@ setpoint, the cooling unit's switch is turned on until the cooling setpoint is a
 
 Auto Virtual Thermostat has been tested on openLuup with AltUI.
 
-Auto Virtual Thermostat is written and supported by Patrick Rigney, aka rigpapa on the [Vera forums](http://http://forum.micasaverde.com/).
+Auto Virtual Thermostat is written and supported by Patrick Rigney, aka rigpapa on the [Vera forums](http://forum.micasaverde.com/index.php/topic,54232.0.html).
 
-Please consider supporting AVT and my other projects by making either
-[a one-time &ldquo;tip&rdquo; or monthly $1 donation](https://www.makersupport.com/toggledbits).
+Please consider supporting AVT and my other projects by making
+[a small donation](https://www.toggledbits.com/donate).
 
 For more information, see <http://www.toggledbits.com/avt/>.
 
 ## Reporting Bugs/Enhancement Requests ##
 
 Bug reports and enhancement requests are welcome! Please use the "Issues" link for the repository to open a new bug report or make an enhancement request.
+There is also active discussion and support available via the [AVT topic on the Vera forums](http://forum.micasaverde.com/index.php/topic,54232.0.html).
 
 ## License ##
 
-SiteSensor is offered under GPL (the GNU Public License) 3.0. See the LICENSE file for details.
+AVT is offered under GPL (the GNU Public License) 3.0. See the LICENSE file for details.
 
 ## Disclaimer ##
 

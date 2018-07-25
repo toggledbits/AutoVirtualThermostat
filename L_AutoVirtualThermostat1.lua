@@ -109,28 +109,13 @@ local function D(msg, ...)
     end
 end
 
--- Take a string and split it around sep, returning table (indexed) of substrings
--- For example abc,def,ghi becomes t[1]=abc, t[2]=def, t[3]=ghi
--- Returns: table of values, count of values (integer ge 0)
-local function split(s, sep)
-    local t = {}
-    local n = 0
-    if s == nil or s == "" then return t,n end -- empty string returns nothing
-    local i,j
-    local k = 1
-    repeat
-        i, j = string.find(s, sep or "%s*,%s*", k)
-        if (i == nil) then
-            table.insert(t, string.sub(s, k, -1))
-            n = n + 1
-            break
-        else
-            table.insert(t, string.sub(s, k, i-1))
-            n = n + 1
-            k = j + 1
-        end
-    until k > string.len(s)
-    return t, n
+local function split( str, sep )
+    if sep == nil then sep = "," end
+    local arr = {}
+    if #str == 0 then return arr, 0 end
+    local rest = string.gsub( str or "", "([^" .. sep .. "]*)" .. sep, function( m ) table.insert( arr, m ) return "" end )
+    table.insert( arr, rest )
+    return arr, #arr
 end
 
 local function shallowcopy(t)
@@ -232,7 +217,7 @@ local function nextRun(stepStamp, pdev)
         if delay < 1 then delay = 1 end
     end
     D("nextRun() scheduling for %1 from now", delay)
-    luup.call_delay( "avtRunScheduledTask", delay, string.format("%d:%d", stepStamp, pdev) )
+    luup.call_delay( "avtDelayCallback", delay, string.format("%d:%d", stepStamp, pdev) )
 end
 
 -- Find task
@@ -341,13 +326,12 @@ local function rescheduleTask( pdev, taskType, newTime )
     return false
 end
 
--- Timer function to run a task (notice not local, for call_delay)
-function runTask(p)
-    D("runTask(%1)", p)
+-- Handle timer task (handler for delay, called by callback in impl file)
+function runTask(p, pdev)
+    D("runTask(%1,%2)", p, pdev)
     local stepStamp,pdev
-    stepStamp,pdev = string.match(p, "(%d+):(%d+)")
-    pdev = tonumber(pdev,10)
-    assert(pdev ~= nil)
+    stepStamp,px = string.match(p, "(%d+):(%d+)")
+    assert(pdev == px)
     stepStamp = tonumber(stepStamp, 10)
     if stepStamp ~= runStamp[pdev] then
         D("runTask() stamp mismatch (got %1, expected %2). Newer thread running! I'm out...", stepStamp, runStamp[pdev])
@@ -900,37 +884,36 @@ local function transition( dev, oldTarget, newTarget )
     end
 end
 
--- Watch callback.
-function varChanged( dev, sid, var, oldVal, newVal )
-    D("varChanged(%1,%2,%3,%4,%5) luup.device is %6", dev, sid, var, oldVal, newVal, luup.device)
+-- Watch callback handler (real callback is in implementation file).
+function handleWatch( dev, sid, var, oldVal, newVal, pdev)
+    D("handleWatch(%1,%2,%3,%4,%5,%6)", dev, sid, var, oldVal, newVal, pdev)
     assert(var ~= nil) -- nil if service or device watch (can happen on openLuup)
-    assert(luup.device ~= nil) -- fails on openLuup, have discussed with author but no fix forthcoming as of yet.
     if sid == FANMODE_SID then
         if var == "Mode" then
-            local state = luup.variable_get(OPMODE_SID, "ModeStatus", luup.device) or "Off"
+            local state = luup.variable_get(OPMODE_SID, "ModeStatus", pdev) or "Off"
             if state == "Off" then
                 -- If thermostat is off, regardless of new mode, the fan is off.
-                fanAutoOff(luup.device)
+                fanAutoOff(pdev)
             elseif newVal == "ContinuousOn" then
-                clearTask(luup.device, "fan")
-                fanOn(luup.device)
+                clearTask(pdev, "fan")
+                fanOn(pdev)
             else
                 if state == "InDeadBand" then
-                    fanAutoOff(luup.device)
+                    fanAutoOff(pdev)
                 end
             end
         elseif var == "FanStatus" then
-            updateDisplayStatus(luup.device)
+            updateDisplayStatus(pdev)
         end
     elseif sid == OPMODE_SID then
         if var == "ModeTarget" then
-            transition( luup.device, oldVal, newVal )
-            checkSensors(luup.device)
+            transition( pdev, oldVal, newVal )
+            checkSensors(pdev)
         elseif var == "ModeStatus" then
-            updateDisplayStatus(luup.device)
+            updateDisplayStatus(pdev)
         end
     elseif sid == TEMPSENS_SID then
-        checkSensors(luup.device)
+        checkSensors(pdev)
     elseif sid == MYSID then
         if var == "SetpointHeating" then
             -- Blech. I hate this hacked crap. But it's what external UIs have come to expect...
@@ -938,9 +921,9 @@ function varChanged( dev, sid, var, oldVal, newVal )
         elseif var == "SetpointCooling" then
             luup.variable_set( SETPOINT_SID .. "_Cool", "CurrentSetpoint", newVal, dev )
         end
-        checkSensors(luup.device)
+        checkSensors(pdev)
     elseif sid == SWITCH_SID then
-        L("Device %1 (%2) changed %3 from %4 to %5", dev, luup.devices[dev].description, var, oldVal, newVal)
+        L("Device %1 (%2) changed %3 from %4 to %5", dev, pdevs[dev].description, var, oldVal, newVal)
     else
         L("*** Unhandled watch callback for dev=%1, sid=%2, var=%3 (from %4 to %5)", dev, sid, var, oldVal, newVal)
     end
@@ -1267,7 +1250,7 @@ end
 local function plugin_checkVersion(dev)
     assert(dev ~= nil)
     D("checkVersion() branch %1 major %2 minor %3, string %4, openLuup %5", luup.version_branch, luup.version_major, luup.version_minor, luup.version, isOpenLuup)
-    if isOpenLuup then return false end
+    if isOpenLuup then return true end
     if luup.version_branch == 1 and luup.version_major >= 7 then
         local v = luup.variable_get( MYSID, "UI7Check", dev )
         if v == nil then luup.variable_set( MYSID, "UI7Check", "true", dev ) end
@@ -1392,7 +1375,7 @@ local function watchDevice( devVar, pdev )
     local wd = getVarNumeric( devVar, 0, pdev, MYSID )
     if wd ~= 0 then
         if luup.devices[wd] ~= nil and luup.device_supports_service(SWITCH_SID, wd) then
-            luup.variable_watch( "avtVarChanged", SWITCH_SID, "Status", wd )
+            luup.variable_watch( "avtWatchCallback", SWITCH_SID, "Status", wd )
         else
             L("%1 %2 does not exist or does not implement SwitchPower1 service", devVar, wd)
         end
@@ -1468,18 +1451,18 @@ function plugin_init(dev)
     end
 
     -- Watch some things, to make us quick to respond to changes.
-    luup.variable_watch( "avtVarChanged", MYSID, "SetpointHeating", dev )
-    luup.variable_watch( "avtVarChanged", MYSID, "SetpointCooling", dev )
-    luup.variable_watch( "avtVarChanged", OPMODE_SID, "ModeTarget", dev )
-    luup.variable_watch( "avtVarChanged", OPMODE_SID, "ModeStatus", dev )
-    luup.variable_watch( "avtVarChanged", FANMODE_SID, "Mode", dev )
-    luup.variable_watch( "avtVarChanged", FANMODE_SID, "FanStatus", dev )
+    luup.variable_watch( "avtWatchCallback", MYSID, "SetpointHeating", dev )
+    luup.variable_watch( "avtWatchCallback", MYSID, "SetpointCooling", dev )
+    luup.variable_watch( "avtWatchCallback", OPMODE_SID, "ModeTarget", dev )
+    luup.variable_watch( "avtWatchCallback", OPMODE_SID, "ModeStatus", dev )
+    luup.variable_watch( "avtWatchCallback", FANMODE_SID, "Mode", dev )
+    luup.variable_watch( "avtWatchCallback", FANMODE_SID, "FanStatus", dev )
     local ts = luup.variable_get(MYSID, "TempSensors", dev) or ""
     local tst = split(ts)
     for _,tx in ipairs(tst) do
         local tnum = tonumber(tx,10) or 0
         if luup.variable_get( TEMPSENS_SID, "CurrentTemperature", tnum ) ~= nil then
-            luup.variable_watch( "avtVarChanged", TEMPSENS_SID, "CurrentTemperature", tnum )
+            luup.variable_watch( "avtWatchCallback", TEMPSENS_SID, "CurrentTemperature", tnum )
         end
     end
     watchDevice("FanDevice", dev)

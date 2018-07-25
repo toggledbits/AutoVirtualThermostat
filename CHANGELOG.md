@@ -1,6 +1,6 @@
 # Change Log #
 
-## Version 1.6 (develop branch) ##
+## Version 1.6 (stable branch) ##
 
 * openLuup loads modules differently from Vera Luup, so work out how to get AVT working on openLuup when multiple device instances are created (differences don't matter if only one device).
 

@@ -8,7 +8,7 @@
 module("L_AutoVirtualThermostat1", package.seeall)
 
 local _PLUGIN_NAME = "AutoVirtualThermostat"
-local _PLUGIN_VERSION = "1.6stable-180724"
+local _PLUGIN_VERSION = "1.6develop"
 local _PLUGIN_URL = "https://www.toggledbits.com/avt"
 local _CONFIGVERSION = 010103
 

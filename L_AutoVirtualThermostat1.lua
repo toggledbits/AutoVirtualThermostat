@@ -329,9 +329,9 @@ end
 -- Handle timer task (handler for delay, called by callback in impl file)
 function runTask(p, pdev)
     D("runTask(%1,%2)", p, pdev)
-    local stepStamp,pdev
+    local stepStamp,px
     stepStamp,px = string.match(p, "(%d+):(%d+)")
-    assert(pdev == px)
+    assert(pdev == tonumber(px))
     stepStamp = tonumber(stepStamp, 10)
     if stepStamp ~= runStamp[pdev] then
         D("runTask() stamp mismatch (got %1, expected %2). Newer thread running! I'm out...", stepStamp, runStamp[pdev])

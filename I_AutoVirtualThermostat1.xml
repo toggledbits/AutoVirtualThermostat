@@ -8,11 +8,26 @@
         -- Reference: http://wiki.micasaverde.com/index.php/Luup_UPnP_Variables_and_Actions#HVAC_UserOperatingMode1
         -- Reference: http://upnp.org/specs/ha/UPnP-ha-HVAC_UserOperatingMode-v1-Service.pdf
         -- -------------------------------------------------------------------------------------------------------------------------
+        function avtCleanup(p)
+            if luup.variable_get("urn:micasaverde-com:serviceId:HaDevice1","Commands",tonumber(p)) == nil then 
+                luup.log("AutoVirtualThermostat: no cleanup tasks remaining (good)")
+                return 
+            end
+            local req = "http://127.0.0.1/port_3480/data_request?id=variableset&amp;DeviceNum=" .. p .. 
+                "&amp;serviceId=urn:micasaverde-com:serviceId:HaDevice1&amp;Variable=Commands&amp;Value="
+            local status, result = luup.inet.wget(req)
+            -- luup.log("AutoVirtualThermostat: " .. req)
+            if status ~= 0 then
+                luup.log("AutoVirtualThermostat: Cleanup of Commands failed, status " .. tostring(status) .. ", result " .. tostring(result),1)
+            end
+        end
+        
         function avtStart(dev)
             luup.log("AutoVirtualThermostat Plugin START-UP!")
             AutoVirtualThermostat = require("L_AutoVirtualThermostat1")
             avtRequestHandler = AutoVirtualThermostat.requestHandler
             luup.register_handler("avtRequestHandler", "AutoVirtualThermostat")
+            luup.call_delay( 'avtCleanup', 90, tostring(dev) )
             return AutoVirtualThermostat.plugin_init(dev)
         end
         

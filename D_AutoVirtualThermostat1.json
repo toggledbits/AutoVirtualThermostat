@@ -6,7 +6,7 @@
                 "service": "urn:toggledbits-com:serviceId:AutoVirtualThermostat1",
                 "variable": "Failure",
                 "operator": "!=",
-                "value": "0",
+                "value": 0,
             }]
         },
         {
@@ -37,67 +37,67 @@
             }]
         }
     ],
-    "x": "2",
-    "y": "4",
+    "x": 2,
+    "y": 4,
     "inScene": 1,
     "Tabs": [{
             "Label": {
                 "lang_tag": "tabname_control",
                 "text": "Control"
             },
-            "Position": "0",
+            "Position": 0,
             "TabType": "flash",
             "top_navigation_tab": 1,
             "ControlGroup": [{
-                    "id": "1",
-                    "scenegroup": "1"
+                    "id": 1,
+                    "scenegroup": 1
                 },
                 {
-                    "id": "2",
-                    "scenegroup": "2"
+                    "id": 2,
+                    "scenegroup": 2
                 },
                 {
-                    "id": "3",
-                    "scenegroup": "3"
+                    "id": 3,
+                    "scenegroup": 3
                 },
                 {
-                    "id": "4",
-                    "scenegroup": "4"
+                    "id": 4,
+                    "scenegroup": 4
                 }
             ],
             "SceneGroup": [{
-                    "id": "1",
-                    "top": "0",
-                    "left": "0",
-                    "x": "1",
-                    "y": "4"
+                    "id": 1,
+                    "top": 0,
+                    "left": 0,
+                    "x": 1,
+                    "y": 4
                 },
                 {
-                    "id": "2",
-                    "top": "0",
-                    "left": "2",
+                    "id": 2,
+                    "top": 0,
+                    "left": 2,
                     "x": "0.5",
-                    "y": "3"
+                    "y": 3
                 },
                 {
-                    "id": "3",
-                    "top": "0",
+                    "id": 3,
+                    "top": 0,
                     "left": "2.5",
                     "x": "0.5",
-                    "y": "3"
+                    "y": 3
                 },
                 {
-                    "id": "4",
-                    "top": "3",
-                    "left": "2",
-                    "x": "1",
-                    "y": "1"
+                    "id": 4,
+                    "top": 3,
+                    "left": 2,
+                    "x": 1,
+                    "y": 1
                 }
             ],
             "Control": [{
                     "ControlType": "label",
-                    "top": "0",
-                    "left": "0",
+                    "top": 0,
+                    "left": 0,
                     "Label": {
                         "lang_tag": "tb_avt_mode",
                         "text": "Mode"
@@ -110,10 +110,10 @@
                     }
                 },
                 {
-                    "ControlGroup": "1",
+                    "ControlGroup": 1,
                     "ControlType": "button",
-                    "top": "0",
-                    "left": "0",
+                    "top": 0,
+                    "left": 0,
                     "Label": {
                         "lang_tag": "cmd_off",
                         "text": "Off"
@@ -135,13 +135,13 @@
                             "Value": "Off"
                         }]
                     },
-                    "ControlCode": "thermostat_mode_off"
+                    "ControlCode": "avt_mode_off"
                 },
                 {
-                    "ControlGroup": "1",
+                    "ControlGroup": 1,
                     "ControlType": "button",
-                    "top": "1",
-                    "left": "0",
+                    "top": 1,
+                    "left": 0,
                     "Label": {
                         "lang_tag": "cmd_auto",
                         "text": "Auto"
@@ -163,17 +163,17 @@
                             "Value": "AutoChangeOver"
                         }]
                     },
-                    "ControlCode": "thermostat_mode_auto"
+                    "ControlCode": "avt_mode_auto"
                 },
                 {
-                    "ControlGroup": "1",
+                    "ControlGroup": 1,
                     "ControlType": "line_break"
                 },
                 {
-                    "ControlGroup": "1",
+                    "ControlGroup": 1,
                     "ControlType": "button",
-                    "top": "2",
-                    "left": "0",
+                    "top": 2,
+                    "left": 0,
                     "Label": {
                         "lang_tag": "cmd_cool",
                         "text": "Cool"
@@ -195,13 +195,13 @@
                             "Value": "CoolOn"
                         }]
                     },
-                    "ControlCode": "thermostat_mode_cool"
+                    "ControlCode": "avt_mode_cool"
                 },
                 {
-                    "ControlGroup": "1",
+                    "ControlGroup": 1,
                     "ControlType": "button",
-                    "top": "3",
-                    "left": "0",
+                    "top": 3,
+                    "left": 0,
                     "Label": {
                         "lang_tag": "cmd_heat",
                         "text": "Heat"
@@ -223,22 +223,24 @@
                             "Value": "HeatOn"
                         }]
                     },
-                    "ControlCode": "thermostat_mode_heat"
+                    "ControlCode": "avt_mode_heat"
                 },
                 
                 
                 {
-                    "ControlGroup": "1",
+                    "ControlGroup": 1,
                     "ControlType": "line_break"
                 },
                 {
-                   "ControlGroup":"1",
+                   "ControlGroup": 1,
                    "ControlType":"multi_state_button",
-                   "top":"0",
-                   "left":"1",
+                   "top":0,
+                   "left":1,
                    "Display":{
-                      "Top": 80,
-                      "Left": 370
+                      "Top": 100,
+                      "Left": 370,
+                      "Width": 72,
+                      "Height": 40
                    },
                    "states":[
                       {
@@ -285,21 +287,20 @@
                                }
                             ]
                          },
-                         "ControlCode":"thermostat_mode_eco"
+                         "ControlCode":"avt_emode_eco"
                       }
-                   ]
+                   ],
+                   "ControlCode": "avt_emode"
                 },
-                
-                
-                
                 {
-                    "ControlGroup": "2",
+                    "ControlGroup": 2,
                     "ControlType": "spinner_horizontal",
-                    "top": "1",
-                    "left": "1",
-                    "XControlPair": "1",
+                    "top": 1,
+                    "left": 1,
+                    "XControlPair": 1,
                     "ID": "NewCurrentSetpointHeat",
                     "Style": "numeric",
+                    "HorizontalMultiplier": 2,
                     "LabelMin": {
                         "lang_tag": "tb_vt_setpointmin",
                         "text": "5"
@@ -336,11 +337,11 @@
                     "ControlCode": "heating_setpoint"
                 },
                 {
-                    "ControlGroup": "2",
+                    "ControlGroup": 2,
                     "ControlType": "spinner_horizontal",
-                    "top": "3",
-                    "left": "1",
-                    "XControlPair": "1",
+                    "top": 3,
+                    "left": 1,
+                    "XControlPair": 1,
                     "ID": "NewCurrentSetpointCool",
                     "Style": "numeric",
                     "LabelMin": {
@@ -386,7 +387,7 @@
                     "ControlType": "label",
                     "HorizontalMultiplier": "0.5",
                     "top": "0.1",
-                    "left": "0",
+                    "left": 0,
                     "text_align": "left",
                     "Label": {
                         "lang_tag": "fan",
@@ -398,13 +399,13 @@
                         "Width": 100,
                         "Height": 25
                     },
-                    "ControlCode": "fan_label"
+                    "ControlCode": "avt_fanmode_label"
                 },
                 {
                     "ControlType": "variable",
                     "HorizontalMultiplier": "0.5",
                     "top": "0.1",
-                    "left": "1",
+                    "left": 1,
                     "Display": {
                         "Top": 60,
                         "Left": 60,
@@ -417,8 +418,8 @@
                 },
                 {
                     "ControlType": "button",
-                    "top": "1",
-                    "left": "0",
+                    "top": 1,
+                    "left": 0,
                     "Label": {
                         "lang_tag": "cmd_auto",
                         "text": "Auto"
@@ -440,12 +441,12 @@
                             "Value": "Auto"
                         }]
                     },
-                    "ControlCode": "fan_auto"
+                    "ControlCode": "avt_fanmode_auto"
                 },
                 {
                     "ControlType": "button",
-                    "top": "2",
-                    "left": "0",
+                    "top": 2,
+                    "left": 0,
                     "Label": {
                         "lang_tag": "cmd_on",
                         "text": "On"
@@ -467,12 +468,12 @@
                             "Value": "ContinuousOn"
                         }]
                     },
-                    "ControlCode": "fan_on"
+                    "ControlCode": "avt_fanmode_on"
                 },
                 {
                     "ControlType": "button",
-                    "top": "2",
-                    "left": "0",
+                    "top": 2,
+                    "left": 0,
                     "Label": {
                         "lang_tag": "tb_fan_periodic",
                         "text": "Periodic"
@@ -494,19 +495,19 @@
                             "Value": "PeriodicOn"
                         }]
                     },
-                    "ControlCode": "fan_periodic"
+                    "ControlCode": "avt_fanmode_periodic"
                 },
                 {
-                    "ControlGroup": "4",
+                    "ControlGroup": 4,
                     "ControlType": "variable",
                     "top": "0.2",
-                    "left": "0",
+                    "left": 0,
                     "XabelSymbol": {
                         "lang_tag": "heater_label_symbol",
                         "text": "&deg;_TEMPERATURE_FORMAT_"
                     },
                     "Display": {
-                        "Top": 90,
+                        "Top": 110,
                         "Left": 450,
                         "Width": 100,
                         "Height": 25,
@@ -516,14 +517,14 @@
                     "ControlCode": "vt_temp"
                 },
                 {
-                    "ControlGroup": "4",
+                    "ControlGroup": 4,
                     "ControlType": "line_break"
                 },
                 {
-                    "ControlGroup": "4",
+                    "ControlGroup": 4,
                     "ControlType": "variable",
                     "top": "0.2",
-                    "left": "0",
+                    "left": 0,
                     "Display": {
                         "Top": 120,
                         "Left": 30,
@@ -584,7 +585,7 @@
                 "lang_tag": "tb_avt_settings",
                 "text": "Settings"
             },
-            "Position": "1",
+            "Position": 1,
             "TabType": "javascript",
             "ScriptName": "J_AutoVirtualThermostat1_UI7.js",
             "Function": "AutoVirtualThermostat.configurePlugin"
@@ -594,7 +595,7 @@
                 "lang_tag": "ui7_advanced",
                 "text": "Advanced"
             },
-            "Position": "2",
+            "Position": 2,
             "TabType": "javascript",
             "ScriptName": "shared.js",
             "Function": "advanced_device"
@@ -604,7 +605,7 @@
                 "lang_tag": "ui7_logs",
                 "text": "Logs"
             },
-            "Position": "3",
+            "Position": 3,
             "TabType": "javascript",
             "ScriptName": "shared.js",
             "Function": "device_logs"
@@ -614,7 +615,7 @@
                 "lang_tag": "ui7_notifications",
                 "text": "Notifications"
             },
-            "Position": "4",
+            "Position": 4,
             "TabType": "javascript",
             "ScriptName": "shared.js",
             "Function": "device_notifications"
@@ -624,7 +625,7 @@
                 "lang_tag": "ui7_device_scenes",
                 "text": "Scenes"
             },
-            "Position": "5",
+            "Position": 5,
             "TabType": "javascript",
             "ScriptName": "shared.js",
             "Function": "device_scenes"
@@ -633,7 +634,7 @@
     "eventList2": [{
             "id": 1,
             "label": {
-                "lang_tag": "thermostat_mode_changes",
+                "lang_tag": "avt_mode_changes",
                 "text": "Thermostat Mode Changes"
             },
             "serviceId": "urn:upnp-org:serviceId:HVAC_UserOperatingMode1",
@@ -789,7 +790,7 @@
                 "text": "Ambient temperature goes above"
             },
             "serviceId": "urn:upnp-org:serviceId:TemperatureSensor1",
-            "norepeat": "1",
+            "norepeat": 1,
             "argumentList": [{
                 "id": 1,
                 "dataType": "i4",
@@ -816,7 +817,7 @@
                 "text": "Ambient temperature goes below"
             },
             "serviceId": "urn:upnp-org:serviceId:TemperatureSensor1",
-            "norepeat": "1",
+            "norepeat": 1,
             "argumentList": [{
                 "id": 1,
                 "dataType": "i4",
@@ -843,7 +844,7 @@
                 "text": "Ambient temperature goes above or below"
             },
             "serviceId": "urn:upnp-org:serviceId:TemperatureSensor1",
-            "norepeat": "1",
+            "norepeat": 1,
             "argumentList": [{
                 "id": 1,
                 "dataType": "i4",
@@ -976,7 +977,7 @@
             "serviceId": "urn:toggledbits-com:serviceId:AutoVirtualThermostat1",
             "serviceStateTable": {
                 "Failure": {
-                    "value": "0",
+                    "value": 0,
                     "comparisson": ">"
                 }
             }
@@ -990,7 +991,7 @@
             "serviceId": "urn:toggledbits-com:serviceId:AutoVirtualThermostat1",
             "serviceStateTable": {
                 "Failure": {
-                    "value": "0",
+                    "value": 0,
                     "comparisson": "="
                 }
             }
@@ -998,4 +999,3 @@
     ],
     "device_type": "urn:schemas-toggledbits-com:device:AutoVirtualThermostat:1"
 }
-

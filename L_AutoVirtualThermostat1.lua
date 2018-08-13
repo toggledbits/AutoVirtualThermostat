@@ -8,9 +8,9 @@
 module("L_AutoVirtualThermostat1", package.seeall)
 
 local _PLUGIN_NAME = "AutoVirtualThermostat"
-local _PLUGIN_VERSION = "1.6stable-180724"
+local _PLUGIN_VERSION = "1.6develop"
 local _PLUGIN_URL = "https://www.toggledbits.com/avt"
-local _CONFIGVERSION = 010103
+local _CONFIGVERSION = 010104
 
 local debugMode = false
 local MAXEVENTS = 100
@@ -194,7 +194,7 @@ local function deviceOnOff( targetDevice, state, vtDev )
         elseif luup.device_supports_service(SWITCH_SID, targetId) then
             luup.call_action(SWITCH_SID, "SetTarget", {newTargetValue=state}, targetId)
         else
-            L("targetControl(): don't know how to control target %1", targetId)
+            L({level=2,msg="Don't know how to control target %1"}, targetId)
             return false
         end
         D("deviceOnOff() %1 changed from %2 to %3", targetDevice, oldState, state)
@@ -331,7 +331,6 @@ function runTask(p, pdev)
     D("runTask(%1,%2)", p, pdev)
     local stepStamp,px
     stepStamp,px = string.match(p, "(%d+):(%d+)")
-    assert(pdev == tonumber(px))
     stepStamp = tonumber(stepStamp, 10)
     if stepStamp ~= runStamp[pdev] then
         D("runTask() stamp mismatch (got %1, expected %2). Newer thread running! I'm out...", stepStamp, runStamp[pdev])
@@ -551,7 +550,7 @@ local function callHeat(dev)
     local lastOff = getDeviceState( dev, "heatLastOff", dev, 0 )
     local equipDelay = lastOff + getVarNumeric("EquipmentDelay", 300, dev)
     if equipDelay > now then
-        L("Call for heating delayed by equipment delay")
+        L{level=2,msg="Call for heating delayed by equipment delay"}
         luup.variable_set(OPMODE_SID, "ModeStatus", "Delayed", dev)
         rescheduleTask(dev, "sense", equipDelay)
         return false
@@ -589,7 +588,7 @@ local function callCool(dev)
     local lastOff = getDeviceState( dev, "coolLastOff", dev, 0 )
     local equipDelay = lastOff + getVarNumeric("EquipmentDelay", 300, dev)
     if equipDelay > now then
-        L("Call for cooling delayed by equipment delay")
+        L{level=2,msg="Call for cooling delayed by equipment delay"}
         luup.variable_set(OPMODE_SID, "ModeStatus", "Delayed", dev)
         rescheduleTask(dev, "sense", equipDelay)
         return false
@@ -734,7 +733,7 @@ local function checkSensors(dev)
     D("checkSensors() TempSensors=%1, valid sensors=%2, total=%3", tst, tempCount, currentTemp)
     if tempCount == 0 then
         -- No valid sensors!
-        L("No valid sensors.")
+        L{level=1,msg="No valid sensors."}
         luup.variable_set( MYSID, "DisplayTemperature", "<span style='font-size:1.5em; font-weight: bold;'>--.-&deg;</span>", dev )
         luup.variable_set( MYSID, "Failure", "1", dev )
         scheduleTask( dev, { ['type']='goidle', func=taskIdle } )
@@ -751,11 +750,11 @@ local function checkSensors(dev)
     local devLockout = getDeviceState( dev, "devLockout", dev, 0 )
     if devLockout > 0 then
         if now < devLockout then
-            L("checkSensors() lockout in effect, %1 seconds to go...", devLockout - os.time())
+            L({level=2,msg="Lockout in effect, %1 seconds to go..."}, devLockout - os.time())
             scheduleTask( dev, { ['type']='goidle', func=taskIdle, dev=dev } )
             return
         end
-        L("checkSensors() restoring from lockout")
+        L("Restoring from lockout")
         setDeviceState( dev, "devLockout", 0, dev )
         modeStatus = "InDeadBand"
         luup.variable_set( OPMODE_SID, "ModeStatus", modeStatus, dev )
@@ -828,7 +827,7 @@ local function checkSensors(dev)
                 luup.variable_set( SETPOINT_SID, "SetpointAchieved", "1", dev )
             end
             if runTime >= coolMRT then
-                L("Cooling lockout due to excess runtime (%1>%2)", runTime, coolMRT)
+                L({level=2,msg="Cooling lockout due to excess runtime (%1>%2)"}, runTime, coolMRT)
                 setDeviceState( dev, "devLockout", now + getVarNumeric( "CoolingLockout", 1800, dev ), dev )
             end
         elseif modeStatus == "HeatOn" and (currentTemp >= heatSP or runTime >= heatMRT) then
@@ -838,7 +837,7 @@ local function checkSensors(dev)
                 luup.variable_set( SETPOINT_SID, "SetpointAchieved", "1", dev )
             end
             if runTime >= heatMRT then
-                L("Heating lockout due to excess runtime (%1>%2)", runTime, heatMRT)
+                L({level=2,msg="Heating lockout due to excess runtime (%1>%2)"}, runTime, heatMRT)
                 setDeviceState( dev, "devLockout", now + getVarNumeric( "HeatingLockout", 1800, dev ), dev )
             end
         else
@@ -1322,7 +1321,6 @@ local function plugin_runOnce(dev)
         luup.variable_set(SETPOINT_SID, "SetpointAchieved", "0", dev)
 
         luup.variable_set(HADEVICE_SID, "ModeSetting", "1:;2:;3:;4:", dev)
-        luup.variable_set(HADEVICE_SID, "Commands", "thermostat_mode_off,thermostat_mode_heat,thermostat_mode_cool,thermostat_mode_auto,thermostat_mode_eco", dev)
 
         luup.variable_set(MYSID, "Version", _CONFIGVERSION, dev)
         return
@@ -1347,7 +1345,6 @@ local function plugin_runOnce(dev)
         D("runOnce() updating config for rev 010101")
         luup.variable_set(MYSID, "MinBatteryLevel", "1", dev)
         luup.variable_set(HADEVICE_SID, "ModeSetting", "1:;2:;3:;4:", dev)
-        luup.variable_set(HADEVICE_SID, "Commands", "thermostat_mode_off,thermostat_mode_heat,thermostat_mode_cool,thermostat_mode_auto,thermostat_mode_eco", dev)
     end
 
     if rev < 010102 then
@@ -1362,6 +1359,10 @@ local function plugin_runOnce(dev)
         luup.attr_set( "device_type", MYTYPE, dev ) -- hoo boy...
         luup.variable_set(SETPOINT_SID .. "_Heat", "CurrentSetpoint", luup.variable_get( MYSID, "SetpointHeating", dev ), dev )
         luup.variable_set(SETPOINT_SID .. "_Cool", "CurrentSetpoint", luup.variable_get( MYSID, "SetpointCooling", dev ), dev )
+    end
+    
+    if rev < 010104 then
+        luup.variable_set(HADEVICE_SID, "Commands", "avt_mode_off,avt_mode_heat,avt_mode_cool,avt_mode_auto,avt_emode,avt_emode_normal,avt_emode_eco,heating_setpoint,cooling_setpoint,avt_fanmode_auto,avt_fanmode_on,avt_fanmode_periodic", dev)
     end
 
     -- No matter what happens above, if our versions don't match, force that here/now.
@@ -1413,7 +1414,7 @@ function plugin_init(dev)
 
     -- Make sure we're in the right environment
     if not plugin_checkVersion(dev) then
-        L("This plugin does not run on this firmware!")
+        L{level=1,msg="This plugin does not run on this firmware!"}
         luup.variable_set( MYSID, "Failure", "1", dev )
         luup.variable_set( MYSID, "DisplayStatus", "Unsupported firmware", dev )
         luup.set_failure( 1, dev )
@@ -1472,7 +1473,7 @@ function plugin_init(dev)
     -- Make sure devices are doing what we expect for current status. The rest will be
     -- sorted later.
     if not restoreDeviceState( dev ) then -- attempt to restore device state, save across luup reloads
-        L("Can't reload device state or expired, resetting...")
+        L{level=2,msg="Can't reload device state or expired, resetting..."}
         goIdle(dev)
     else
         local tt = luup.variable_get(OPMODE_SID, "ModeTarget", dev) or "Off"

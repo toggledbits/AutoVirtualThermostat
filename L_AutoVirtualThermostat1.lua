@@ -8,7 +8,7 @@
 module("L_AutoVirtualThermostat1", package.seeall)
 
 local _PLUGIN_NAME = "AutoVirtualThermostat"
-local _PLUGIN_VERSION = "1.6develop"
+local _PLUGIN_VERSION = "1.6stable-180918"
 local _PLUGIN_URL = "https://www.toggledbits.com/avt"
 local _CONFIGVERSION = 010104
 
@@ -187,7 +187,7 @@ local function deviceOnOff( targetDevice, state, vtDev )
     end
     if targetId > 0 and luup.devices[targetId] ~= nil then
         local oldState = getVarNumeric("Status", 0, targetId, SWITCH_SID)
-        if state then state=1 else state=0 end
+        state = state and "1" or "0"
         if luup.devices[targetId].device_type == "urn:schemas-upnp-org:device:VSwitch:1" then
             -- VSwitch requires parameters as strings, which isn't struct UPnP, so handle separately.
             luup.call_action("urn:upnp-org:serviceId:VSwitch1", "SetTarget", {newTargetValue=tostring(state)}, targetId)

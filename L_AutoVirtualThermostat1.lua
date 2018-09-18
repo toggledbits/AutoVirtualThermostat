@@ -183,7 +183,7 @@ local function deviceOnOff( targetDevice, state, vtDev )
     if type(targetDevice) == "string" then
         targetId = getVarNumeric( targetDevice, 0, vtDev, MYSID )
     else
-        targetId = tonumber(targetDevice,10)
+        targetId = tonumber(targetDevice) or 0
     end
     if targetId > 0 and luup.devices[targetId] ~= nil then
         local oldState = getVarNumeric("Status", 0, targetId, SWITCH_SID)
@@ -884,6 +884,13 @@ local function transition( dev, oldTarget, newTarget )
     end
 end
 
+-- Check our controlled devices and make sure they are in the expected state.
+-- If not, attempt to bring them around.
+function checkDevice( dev, sid, var, oldVal, newVal, pdev )
+    D("checkDevices(%1,%2,%3,%4,%5,%6)", dev, sid, var, oldVal, newVal, pdev)
+    
+end
+
 -- Watch callback handler (real callback is in implementation file).
 function handleWatch( dev, sid, var, oldVal, newVal, pdev)
     D("handleWatch(%1,%2,%3,%4,%5,%6)", dev, sid, var, oldVal, newVal, pdev)
@@ -924,6 +931,9 @@ function handleWatch( dev, sid, var, oldVal, newVal, pdev)
         checkSensors(pdev)
     elseif sid == SWITCH_SID then
         L("Device %1 (%2) changed %3 from %4 to %5", dev, pdevs[dev].description, var, oldVal, newVal)
+        if getVarNumeric( "EnforceState", 0, dev, MYSID ) ~= 0 then
+            checkDevice(dev, sid, var, oldVal, newVal, pdev)
+        end
     else
         L("*** Unhandled watch callback for dev=%1, sid=%2, var=%3 (from %4 to %5)", dev, sid, var, oldVal, newVal)
     end
@@ -1086,8 +1096,9 @@ local function getDevice( dev, pdev, v )
         , manufacturer = luup.attr_get( "manufacturer", dev ) or ""
         , model = luup.attr_get( "model", dev ) or ""
     }
-    local rc,t,httpStatus
-    rc,t,httpStatus = luup.inet.wget("http://localhost/port_3480/data_request?id=status&DeviceNum=" .. dev .. "&output_format=json", 15)
+    local rc,t,httpStatus,url
+    url = isOpenLuup and "http://127.0.0.1:3480/" or "http://localhost/port_3480/"
+    rc,t,httpStatus = luup.inet.wget(req .. "data_request?id=status&DeviceNum=" .. dev .. "&output_format=json", 15)
     if httpStatus ~= 200 or rc ~= 0 then
         devinfo['_comment'] = string.format( 'State info could not be retrieved, rc=%d, http=%d', rc, httpStatus )
         return devinfo

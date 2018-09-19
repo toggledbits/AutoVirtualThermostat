@@ -922,7 +922,7 @@ function handleWatch( dev, sid, var, oldVal, newVal, pdev)
         end
         checkSensors(pdev)
     elseif sid == SWITCH_SID then
-        L("Device %1 (%2) changed %3 from %4 to %5", dev, pdevs[dev].description, var, oldVal, newVal)
+        L("Device %1 (%2) changed %3 from %4 to %5", dev, luup.devices[dev].description, var, oldVal, newVal)
     else
         L("*** Unhandled watch callback for dev=%1, sid=%2, var=%3 (from %4 to %5)", dev, sid, var, oldVal, newVal)
     end

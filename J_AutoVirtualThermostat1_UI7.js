@@ -3,12 +3,12 @@
  * J_AutoVirtualThermostat1_UI7.js
  * Configuration interface for Virtual Thermostat
  *
- * Copyright 2017 Patrick H. Rigney, All Rights Reserved.
+ * Copyright 2017,2018 Patrick H. Rigney, All Rights Reserved.
  * This file is part of the Auto Virtual Thermostat Plugin for Vera. 
  * For license information, see LICENSE at https://github.com/toggledbits/avt/
- * $Id: $
  */
- 
+/* globals api,jQuery */
+
 // "use strict"; // fails under UI7, fine on ALTUI
 var AutoVirtualThermostat = (function(api) {
 

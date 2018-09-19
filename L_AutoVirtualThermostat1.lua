@@ -187,12 +187,13 @@ local function deviceOnOff( targetDevice, state, vtDev )
     end
     if targetId > 0 and luup.devices[targetId] ~= nil then
         local oldState = getVarNumeric("Status", 0, targetId, SWITCH_SID)
-        if state then state=1 else state=0 end
+        state = state and "1" or "0" -- force strings (openLuup/VSwitch compat)
         if luup.devices[targetId].device_type == "urn:schemas-upnp-org:device:VSwitch:1" then
-            -- VSwitch requires parameters as strings, which isn't struct UPnP, so handle separately.
-            luup.call_action("urn:upnp-org:serviceId:VSwitch1", "SetTarget", {newTargetValue=tostring(state)}, targetId)
+            -- VSwitch special action
+            luup.call_action("urn:upnp-org:serviceId:VSwitch1", "SetTarget", { newTargetValue=state }, targetId)
         elseif luup.device_supports_service(SWITCH_SID, targetId) then
-            luup.call_action(SWITCH_SID, "SetTarget", {newTargetValue=state}, targetId)
+            -- Generic binary switch action
+            luup.call_action(SWITCH_SID, "SetTarget", { newTargetValue=state }, targetId)
         else
             L({level=2,msg="Don't know how to control target %1"}, targetId)
             return false
@@ -655,8 +656,7 @@ local function checkSensors(dev)
     assert(dev ~= nil)
     local modeStatus = luup.variable_get(OPMODE_SID, "ModeStatus", dev) or "Off"
     local currentTemp = 0
-    local ts = luup.variable_get(MYSID, "TempSensors", dev) or ""
-    local tst = split(ts)
+    local tst = split( luup.variable_get(MYSID, "TempSensors", dev) or "" )
     local tempCount = 0
     local now = os.time()
     local maxSensorDelay = getVarNumeric( "MaxSensorDelay", 3600, dev )
@@ -886,7 +886,7 @@ end
 
 -- Check our controlled devices and make sure they are in the expected state.
 -- If not, attempt to bring them around.
-function checkDevice( dev, sid, var, oldVal, newVal, pdev )
+local function checkDevice( dev, sid, var, oldVal, newVal, pdev )
     D("checkDevices(%1,%2,%3,%4,%5,%6)", dev, sid, var, oldVal, newVal, pdev)
     
 end
@@ -930,7 +930,7 @@ function handleWatch( dev, sid, var, oldVal, newVal, pdev)
         end
         checkSensors(pdev)
     elseif sid == SWITCH_SID then
-        L("Device %1 (%2) changed %3 from %4 to %5", dev, pdevs[dev].description, var, oldVal, newVal)
+        L("Device %1 (%2) changed %3 from %4 to %5", dev, luup.devices[dev].description, var, oldVal, newVal)
         if getVarNumeric( "EnforceState", 0, dev, MYSID ) ~= 0 then
             checkDevice(dev, sid, var, oldVal, newVal, pdev)
         end
@@ -1097,8 +1097,8 @@ local function getDevice( dev, pdev, v )
         , model = luup.attr_get( "model", dev ) or ""
     }
     local rc,t,httpStatus,url
-    url = isOpenLuup and "http://127.0.0.1:3480/" or "http://localhost/port_3480/"
-    rc,t,httpStatus = luup.inet.wget(req .. "data_request?id=status&DeviceNum=" .. dev .. "&output_format=json", 15)
+    url = isOpenLuup and "http://127.0.0.1:3480" or "http://localhost/port_3480"
+    rc,t,httpStatus = luup.inet.wget(url .. "/data_request?id=status&DeviceNum=" .. dev .. "&output_format=json", 15)
     if httpStatus ~= 200 or rc ~= 0 then
         devinfo['_comment'] = string.format( 'State info could not be retrieved, rc=%d, http=%d', rc, httpStatus )
         return devinfo

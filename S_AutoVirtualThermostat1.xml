@@ -19,15 +19,27 @@
         </stateVariable>
         <stateVariable sendEvents="yes">
             <name>SetpointCooling</name>
-            <dataType>i4</dataType>
+            <dataType>r4</dataType>
             <defaultValue>72</defaultValue>
             <shortCode>coolsp</shortCode>
         </stateVariable>
         <stateVariable sendEvents="yes">
             <name>SetpointHeating</name>
-            <dataType>i4</dataType>
+            <dataType>r4</dataType>
             <defaultValue>72</defaultValue>
             <shortCode>heatsp</shortCode>
+        </stateVariable>
+        <stateVariable sendEvents="no">
+            <name>R4_ARG</name>
+            <dataType>r4</dataType>
+        </stateVariable>
+        <stateVariable sendEvents="no">
+            <name>ST_ARG</name>
+            <dataType>string</dataType>
+        </stateVariable>
+        <stateVariable sendEvents="no">
+            <name>BOOL_ARG</name>
+            <dataType>boolean</dataType>
         </stateVariable>
     </serviceStateTable>
     <actionList>
@@ -37,10 +49,12 @@
                 <argument>
                     <name>Application</name>
                     <direction>in</direction>
+                    <relatedStateVariable>ST_ARG</relatedStateVariable>
                 </argument>
                 <argument>
                     <name>NewCurrentSetpoint</name>
                     <direction>in</direction>
+                    <relatedStateVariable>R4_ARG</relatedStateVariable>
                 </argument>
             </argumentList>
         </action>
@@ -64,6 +78,7 @@
                 <argument>
                     <name>NewCoolingSetpoint</name>
                     <direction>in</direction>
+                    <relatedStateVariable>R4_ARG</relatedStateVariable>
                 </argument>
             </argumentList>
         </action>
@@ -73,6 +88,7 @@
                 <argument>
                     <name>NewHeatingSetpoint</name>
                     <direction>in</direction>
+                    <relatedStateVariable>R4_ARG</relatedStateVariable>
                 </argument>
             </argumentList>
         </action>
@@ -82,6 +98,7 @@
                 <argument>
                     <name>debug</name>
                     <direction>in</direction>
+                    <relatedStateVariable>BOOLEAN_ARG</relatedStateVariable>
                 </argument>
             </argumentList>
         </action>

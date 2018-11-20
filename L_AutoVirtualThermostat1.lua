@@ -949,14 +949,14 @@ end
 
 function actionSetEnergyModeTarget( dev, newMode )
     D("actionSetEnergyModeTarget(%1,%2)", dev, newMode)
-    if newMode == nil then return false, "Invalid NewEnergyModeTarget" end
+    if newMode == nil then return false, "Invalid NewModeTarget" end
     newMode = newMode:lower()
     if newMode == "eco" or newMode == "economy" or newMode == "energysavingsmode" then newMode = EMODE_ECO
     elseif newMode == "normal" or newMode == "comfort" then newMode = EMODE_NORMAL
     else
         -- Emulate the behavior of SmartVT by accepting 0/1 for Eco/Normal respectively.
         newMode = tonumber( newMode, 10 )
-        if newMode == nil then return false, "Invalid NewEnergyModeTarget"
+        if newMode == nil then return false, "Invalid NewModeTarget"
         elseif newMode ~= 0 then newMode = EMODE_NORMAL
         else newMode = EMODE_ECO
         end
@@ -1100,7 +1100,7 @@ local function getDevice( dev, pdev, v )
     url = isOpenLuup and "http://127.0.0.1:3480" or "http://localhost/port_3480"
     rc,t,httpStatus = luup.inet.wget(url .. "/data_request?id=status&DeviceNum=" .. dev .. "&output_format=json", 15)
     if httpStatus ~= 200 or rc ~= 0 then
-        devinfo['_comment'] = string.format( 'State info could not be retrieved, rc=%d, http=%d', rc, httpStatus )
+        devinfo['_comment'] = string.format( 'State info could not be retrieved, rc=%s, http=%s', tostring(rc), tostring(httpStatus) )
         return devinfo
     end
     local d = dkjson.decode(t)

@@ -60,8 +60,8 @@ var AutoVirtualThermostat_ALTUI = ( function( window, undefined ) {
             {label:"Cycle", value:"PeriodicOn", service:"urn:upnp-org:serviceId:HVAC_FanOperatingMode1", action:"SetMode", name:"NewMode"}
         ];
         var energyModeItems = [
-            {label:"Comfort", value:"Normal", service:"urn:upnp-org:serviceId:HVAC_UserOperatingMode1", action:"SetEnergyModeTarget" , name:"NewEnergyModeTarget"},
-            {label:"Economy", value:"EnergySavingsMode", service:"urn:upnp-org:serviceId:HVAC_UserOperatingMode1", action:"SetEnergyModeTarget", name:"NewEnergyModeTarget"}
+            {label:"Comfort", value:"Normal", service:"urn:upnp-org:serviceId:HVAC_UserOperatingMode1", action:"SetEnergyModeTarget" , name:"NewModeTarget"},
+            {label:"Economy", value:"EnergySavingsMode", service:"urn:upnp-org:serviceId:HVAC_UserOperatingMode1", action:"SetEnergyModeTarget", name:"NewModeTarget"}
         ];
         var HVAC_INCREMENT = 0.5;
         var modeTarget = MultiBox.getStatus( device, 'urn:upnp-org:serviceId:HVAC_UserOperatingMode1', 'ModeTarget' );

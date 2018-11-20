@@ -8,7 +8,7 @@
 module("L_AutoVirtualThermostat1", package.seeall)
 
 local _PLUGIN_NAME = "AutoVirtualThermostat"
-local _PLUGIN_VERSION = "1.6stable-180918"
+local _PLUGIN_VERSION = "1.6stable-181120"
 local _PLUGIN_URL = "https://www.toggledbits.com/avt"
 local _CONFIGVERSION = 010104
 
@@ -183,16 +183,17 @@ local function deviceOnOff( targetDevice, state, vtDev )
     if type(targetDevice) == "string" then
         targetId = getVarNumeric( targetDevice, 0, vtDev, MYSID )
     else
-        targetId = tonumber(targetDevice,10)
+        targetId = tonumber(targetDevice) or 0
     end
     if targetId > 0 and luup.devices[targetId] ~= nil then
         local oldState = getVarNumeric("Status", 0, targetId, SWITCH_SID)
-        state = state and "1" or "0"
+        state = state and "1" or "0" -- force strings (openLuup/VSwitch compat)
         if luup.devices[targetId].device_type == "urn:schemas-upnp-org:device:VSwitch:1" then
-            -- VSwitch requires parameters as strings, which isn't struct UPnP, so handle separately.
-            luup.call_action("urn:upnp-org:serviceId:VSwitch1", "SetTarget", {newTargetValue=tostring(state)}, targetId)
+            -- VSwitch special action
+            luup.call_action("urn:upnp-org:serviceId:VSwitch1", "SetTarget", { newTargetValue=state }, targetId)
         elseif luup.device_supports_service(SWITCH_SID, targetId) then
-            luup.call_action(SWITCH_SID, "SetTarget", {newTargetValue=state}, targetId)
+            -- Generic binary switch action
+            luup.call_action(SWITCH_SID, "SetTarget", { newTargetValue=state }, targetId)
         else
             L({level=2,msg="Don't know how to control target %1"}, targetId)
             return false
@@ -654,8 +655,7 @@ local function checkSensors(dev)
     assert(dev ~= nil)
     local modeStatus = luup.variable_get(OPMODE_SID, "ModeStatus", dev) or "Off"
     local currentTemp = 0
-    local ts = luup.variable_get(MYSID, "TempSensors", dev) or ""
-    local tst = split(ts)
+    local tst = split( luup.variable_get(MYSID, "TempSensors", dev) or "" )
     local tempCount = 0
     local now = os.time()
     local maxSensorDelay = getVarNumeric( "MaxSensorDelay", 3600, dev )
@@ -883,6 +883,13 @@ local function transition( dev, oldTarget, newTarget )
     end
 end
 
+-- Check our controlled devices and make sure they are in the expected state.
+-- If not, attempt to bring them around.
+local function checkDevice( dev, sid, var, oldVal, newVal, pdev )
+    D("checkDevices(%1,%2,%3,%4,%5,%6)", dev, sid, var, oldVal, newVal, pdev)
+    
+end
+
 -- Watch callback handler (real callback is in implementation file).
 function handleWatch( dev, sid, var, oldVal, newVal, pdev)
     D("handleWatch(%1,%2,%3,%4,%5,%6)", dev, sid, var, oldVal, newVal, pdev)
@@ -938,14 +945,14 @@ end
 
 function actionSetEnergyModeTarget( dev, newMode )
     D("actionSetEnergyModeTarget(%1,%2)", dev, newMode)
-    if newMode == nil then return false, "Invalid NewEnergyModeTarget" end
+    if newMode == nil then return false, "Invalid NewModeTarget" end
     newMode = newMode:lower()
     if newMode == "eco" or newMode == "economy" or newMode == "energysavingsmode" then newMode = EMODE_ECO
     elseif newMode == "normal" or newMode == "comfort" then newMode = EMODE_NORMAL
     else
         -- Emulate the behavior of SmartVT by accepting 0/1 for Eco/Normal respectively.
         newMode = tonumber( newMode, 10 )
-        if newMode == nil then return false, "Invalid NewEnergyModeTarget"
+        if newMode == nil then return false, "Invalid NewModeTarget"
         elseif newMode ~= 0 then newMode = EMODE_NORMAL
         else newMode = EMODE_ECO
         end
@@ -1085,10 +1092,11 @@ local function getDevice( dev, pdev, v )
         , manufacturer = luup.attr_get( "manufacturer", dev ) or ""
         , model = luup.attr_get( "model", dev ) or ""
     }
-    local rc,t,httpStatus
-    rc,t,httpStatus = luup.inet.wget("http://localhost/port_3480/data_request?id=status&DeviceNum=" .. dev .. "&output_format=json", 15)
+    local rc,t,httpStatus,url
+    url = isOpenLuup and "http://127.0.0.1:3480" or "http://localhost/port_3480"
+    rc,t,httpStatus = luup.inet.wget(url .. "/data_request?id=status&DeviceNum=" .. dev .. "&output_format=json", 15)
     if httpStatus ~= 200 or rc ~= 0 then
-        devinfo['_comment'] = string.format( 'State info could not be retrieved, rc=%d, http=%d', rc, httpStatus )
+        devinfo['_comment'] = string.format( 'State info could not be retrieved, rc=%s, http=%s', tostring(rc), tostring(httpStatus) )
         return devinfo
     end
     local d = dkjson.decode(t)

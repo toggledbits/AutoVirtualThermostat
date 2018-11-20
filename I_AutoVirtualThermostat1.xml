@@ -70,7 +70,7 @@
 			<serviceId>urn:upnp-org:serviceId:HVAC_UserOperatingMode1</serviceId>
 			<name>SetEnergyModeTarget</name>
 			<run>
-                local newMode = lul_settings.NewEnergyModeTarget
+                local newMode = lul_settings.NewModeTarget or lul_settings.NewEnergyModeTarget -- legacy/error
                 AutoVirtualThermostat.actionSetEnergyModeTarget( lul_device, newMode )
                 return true
 			</run>

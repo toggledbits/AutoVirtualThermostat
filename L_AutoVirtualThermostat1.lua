@@ -7,10 +7,11 @@
 
 module("L_AutoVirtualThermostat1", package.seeall)
 
+local _PLUGIN_ID = 8956
 local _PLUGIN_NAME = "AutoVirtualThermostat"
 local _PLUGIN_VERSION = "1.6develop"
 local _PLUGIN_URL = "https://www.toggledbits.com/avt"
-local _CONFIGVERSION = 010104
+local _CONFIGVERSION = 010105
 
 local debugMode = false
 local MAXEVENTS = 100
@@ -1051,6 +1052,7 @@ function actionSetCurrentSetpoint( dev, newSP, whichSP )
     end
     saveEnergyModeSetpoints( dev )
     luup.variable_set( SETPOINT_SID, "SetpointAchieved", "0", dev )
+    luup.variable_set( SETPOINT_SID, "AllSetpoints", tostring(heatSP) .. "," .. tostring(coolSP) .. "," .. tostring(math.floor((heatSP+coolSP+0.5)/2)), dev )
 end
 
 function actionSetDebug( dev, state )
@@ -1323,8 +1325,8 @@ local function plugin_runOnce(dev)
         luup.variable_set(OPMODE_SID, "ModeStatus", "Off", dev)
         luup.variable_set(OPMODE_SID, "EnergyModeTarget", EMODE_NORMAL, dev)
         luup.variable_set(OPMODE_SID, "EnergyModeStatus", EMODE_NORMAL, dev)
-        -- Do NOT set AutoMode; see http://wiki.micasaverde.com/index.php/Luup_UPnP_Variables_and_Actions#TemperatureSetpoint1
-        -- luup.variable_set(OPMODE_SID, "AutoMode", nil, dev)
+        luup.variable_set(OPMODE_SID, "AutoMode", 0, dev)
+        luup.variable_set(OPMODE_SID, "AllSetpoints", 0, dev)
 
         luup.variable_set(FANMODE_SID, "Mode", "Auto", dev)
         luup.variable_set(FANMODE_SID, "FanStatus", "Off", dev)
@@ -1375,6 +1377,11 @@ local function plugin_runOnce(dev)
     
     if rev < 010104 then
         luup.variable_set(HADEVICE_SID, "Commands", "avt_mode_off,avt_mode_heat,avt_mode_cool,avt_mode_auto,avt_emode,avt_emode_normal,avt_emode_eco,heating_setpoint,cooling_setpoint,avt_fanmode_auto,avt_fanmode_on,avt_fanmode_periodic", dev)
+    end
+    
+    if rev < 010105 then
+        luup.variable_set(OPMODE_SID, "AutoMode", 0, dev)
+        luup.variable_set(OPMODE_SID, "AllSetpoints", "", dev)
     end
 
     -- No matter what happens above, if our versions don't match, force that here/now.

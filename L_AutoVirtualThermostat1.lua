@@ -146,6 +146,22 @@ local function limit( n, nMin, nMax )
     return n
 end
 
+-- Get median of an array of values, return to prec decimals. The rounding makes
+-- it possible that the median can be less than or greater than the range of
+-- array values (e.g. median of 8.1 and 8.3 with prec=0 yields 8), so enforce 
+-- min/max from array value range. Returns median, min and max.
+local function median( a, prec )
+    local sum = 0
+    local mini = a[1]
+    local maxi = mini
+    for _,v in ipairs(a) do sum = sum + v if v < mini then mini = v elseif v > maxi then maxi = v end end
+    sum = sum / #a
+    local d = 10^prec
+    local ret = math.floor( sum * d + 0.5 ) / d
+    if ret < mini then ret = mini elseif ret > maxi then ret = maxi end
+    return ret, mini, maxi
+end
+
 local function saveDeviceState( dev )
     luup.variable_set( MYSID, "State", json.encode( { timestamp=os.time(), devState=devState } ), dev )
 end
@@ -1052,7 +1068,7 @@ function actionSetCurrentSetpoint( dev, newSP, whichSP )
     end
     saveEnergyModeSetpoints( dev )
     luup.variable_set( SETPOINT_SID, "SetpointAchieved", "0", dev )
-    luup.variable_set( SETPOINT_SID, "AllSetpoints", tostring(heatSP) .. "," .. tostring(coolSP) .. "," .. tostring(math.floor((heatSP+coolSP+0.5)/2)), dev )
+    luup.variable_set( SETPOINT_SID, "AllSetpoints", tostring(heatSP) .. "," .. tostring(coolSP) .. "," .. tostring(median([heatSP,coolSP],1)), dev )
 end
 
 function actionSetDebug( dev, state )

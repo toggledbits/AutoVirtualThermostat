@@ -146,11 +146,11 @@ local function limit( n, nMin, nMax )
     return n
 end
 
--- Get median of an array of values, return to prec decimals. The rounding makes
--- it possible that the median can be less than or greater than the range of
--- array values (e.g. median of 8.1 and 8.3 with prec=0 yields 8), so enforce 
--- min/max from array value range. Returns median, min and max.
-local function median( a, prec )
+-- Get mean of an array of values, return to prec decimals. The rounding makes
+-- it possible that the mean can be less than or greater than the range of
+-- array values (e.g. mean of 8.1 and 8.3 with prec=0 yields 8), so enforce 
+-- min/max from array value range. Returns mean, min and max.
+local function mean( a, prec )
     local sum = 0
     local mini = a[1]
     local maxi = mini
@@ -669,7 +669,7 @@ end
 local function checkSensors(dev)
     D("checkSensors(%1)", dev)
     -- Check sensor(s), get current temperature.
-    dev = tonumber(dev,10)
+    dev = tonumber( dev )
     assert(dev ~= nil)
     local modeStatus = luup.variable_get(OPMODE_SID, "ModeStatus", dev) or "Off"
     local currentTemp = 0
@@ -680,12 +680,12 @@ local function checkSensors(dev)
     local maxSensorBattery = getVarNumeric( "MaxSensorBattery", 7200, dev )
     local minBatteryLevel = getVarNumeric( "MinBatteryLevel", 1, dev )
     for _,ts in ipairs(tst) do
-        local tnum = tonumber(ts,10)
+        local tnum = tonumber( ts )
         if tnum ~= nil and luup.devices[tnum] ~= nil then
             local temp, since, rawTemp
             rawTemp,since = luup.variable_get( TEMPSENS_SID, "CurrentTemperature", tnum )
-            if rawTemp ~= nil then temp = tonumber(rawTemp, 10) else temp = nil end
-            since = tonumber(since or "", 10) or 0
+            if rawTemp ~= nil then temp = tonumber(rawTemp) else temp = nil end
+            since = tonumber( since or 0 ) or 0
             D("checkSensors() temp sensor %1 (%2) temp %3 since %4 (raw %5)",
                 ts, luup.devices[tnum].description, temp, since, rawTemp)
             local valid = true -- innocent until proven guilty
@@ -1068,7 +1068,7 @@ function actionSetCurrentSetpoint( dev, newSP, whichSP )
     end
     saveEnergyModeSetpoints( dev )
     luup.variable_set( SETPOINT_SID, "SetpointAchieved", "0", dev )
-    luup.variable_set( SETPOINT_SID, "AllSetpoints", tostring(heatSP) .. "," .. tostring(coolSP) .. "," .. tostring(median([heatSP,coolSP],1)), dev )
+    luup.variable_set( SETPOINT_SID, "AllSetpoints", tostring(heatSP) .. "," .. tostring(coolSP) .. "," .. tostring(mean({heatSP,coolSP},1)), dev )
 end
 
 function actionSetDebug( dev, state )

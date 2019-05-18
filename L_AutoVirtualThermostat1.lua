@@ -9,9 +9,9 @@ module("L_AutoVirtualThermostat1", package.seeall)
 
 local _PLUGIN_ID = 8956
 local _PLUGIN_NAME = "AutoVirtualThermostat"
-local _PLUGIN_VERSION = "1.6develop"
+local _PLUGIN_VERSION = "1.6develop-19138"
 local _PLUGIN_URL = "https://www.toggledbits.com/avt"
-local _CONFIGVERSION = 010105
+local _CONFIGVERSION = 19138
 
 local debugMode = false
 local MAXEVENTS = 100
@@ -945,6 +945,9 @@ function handleWatch( dev, sid, var, oldVal, newVal, pdev)
         elseif var == "SetpointCooling" then
             luup.variable_set( SETPOINT_SID .. "_Cool", "CurrentSetpoint", newVal, dev )
         end
+		local heatSP = getVarNumeric( "SetpointHeating", newVal, dev, MYSID )
+		local coolSP = getVarNumeric( "SetpointCooling", heatSP, dev, MYSID )
+		luup.variable_set( SETPOINT_SID, "AllSetpoints", tostring(heatSP) .. "," .. tostring(coolSP) .. "," .. tostring(mean({heatSP,coolSP},1)), dev )
         checkSensors(pdev)
     elseif sid == SWITCH_SID then
         L("Device %1 (%2) changed %3 from %4 to %5", dev, luup.devices[dev].description, var, oldVal, newVal)
@@ -1068,7 +1071,6 @@ function actionSetCurrentSetpoint( dev, newSP, whichSP )
     end
     saveEnergyModeSetpoints( dev )
     luup.variable_set( SETPOINT_SID, "SetpointAchieved", "0", dev )
-    luup.variable_set( SETPOINT_SID, "AllSetpoints", tostring(heatSP) .. "," .. tostring(coolSP) .. "," .. tostring(mean({heatSP,coolSP},1)), dev )
 end
 
 function actionSetDebug( dev, state )
@@ -1341,14 +1343,14 @@ local function plugin_runOnce(dev)
         luup.variable_set(OPMODE_SID, "ModeStatus", "Off", dev)
         luup.variable_set(OPMODE_SID, "EnergyModeTarget", EMODE_NORMAL, dev)
         luup.variable_set(OPMODE_SID, "EnergyModeStatus", EMODE_NORMAL, dev)
-        luup.variable_set(OPMODE_SID, "AutoMode", 0, dev)
-        luup.variable_set(OPMODE_SID, "AllSetpoints", 0, dev)
 
         luup.variable_set(FANMODE_SID, "Mode", "Auto", dev)
         luup.variable_set(FANMODE_SID, "FanStatus", "Off", dev)
 
         luup.variable_set(SETPOINT_SID, "Application", "DualHeatingCooling", dev)
         luup.variable_set(SETPOINT_SID, "SetpointAchieved", "0", dev)
+        luup.variable_set(SETPOINT_SID, "AllSetpoints", "", dev)
+        luup.variable_set(SETPOINT_SID, "AutoMode", 0, dev)
 
         luup.variable_set(HADEVICE_SID, "ModeSetting", "1:;2:;3:;4:", dev)
 
@@ -1377,13 +1379,6 @@ local function plugin_runOnce(dev)
         luup.variable_set(HADEVICE_SID, "ModeSetting", "1:;2:;3:;4:", dev)
     end
 
-    if rev < 010102 then
-        D("runOnce() updating config for rev 010102")
-        -- We should not set AutoMode (see above), but we used to. Empty the variable, then try to delete it.
-        luup.variable_set(OPMODE_SID, "AutoMode", "", dev)
-        luup.inet.wget("http://127.0.0.1/port_3480/data_request?id=variableset&DeviceNum=" .. dev .. "&serviceId=" .. OPMODE_SID .. "&Variable=AutoMode&Value=")
-    end
-
     if rev < 010103 then
         D("runOnce() updating config for rev 010103")
         luup.attr_set( "device_type", MYTYPE, dev ) -- hoo boy...
@@ -1395,10 +1390,10 @@ local function plugin_runOnce(dev)
         luup.variable_set(HADEVICE_SID, "Commands", "avt_mode_off,avt_mode_heat,avt_mode_cool,avt_mode_auto,avt_emode,avt_emode_normal,avt_emode_eco,heating_setpoint,cooling_setpoint,avt_fanmode_auto,avt_fanmode_on,avt_fanmode_periodic", dev)
     end
     
-    if rev < 010105 then
-        luup.variable_set(OPMODE_SID, "AutoMode", 0, dev)
-        luup.variable_set(OPMODE_SID, "AllSetpoints", "", dev)
-    end
+	if rev < 19138 then
+        luup.variable_set(SETPOINT_SID, "AutoMode", 0, dev)
+        luup.variable_set(SETPOINT_SID, "AllSetpoints", "", dev)
+	end
 
     -- No matter what happens above, if our versions don't match, force that here/now.
     if (rev ~= _CONFIGVERSION) then

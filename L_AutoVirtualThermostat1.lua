@@ -7,10 +7,11 @@
 
 module("L_AutoVirtualThermostat1", package.seeall)
 
+local _PLUGIN_ID = 8956
 local _PLUGIN_NAME = "AutoVirtualThermostat"
-local _PLUGIN_VERSION = "1.6stable-181120"
+local _PLUGIN_VERSION = "1.6develop-19138"
 local _PLUGIN_URL = "https://www.toggledbits.com/avt"
-local _CONFIGVERSION = 010104
+local _CONFIGVERSION = 19138
 
 local debugMode = false
 local MAXEVENTS = 100
@@ -143,6 +144,22 @@ local function limit( n, nMin, nMax )
     if n == nil or n < nMin then return nMin end
     if n > nMax then return nMax end
     return n
+end
+
+-- Get mean of an array of values, return to prec decimals. The rounding makes
+-- it possible that the mean can be less than or greater than the range of
+-- array values (e.g. mean of 8.1 and 8.3 with prec=0 yields 8), so enforce 
+-- min/max from array value range. Returns mean, min and max.
+local function mean( a, prec )
+    local sum = 0
+    local mini = a[1]
+    local maxi = mini
+    for _,v in ipairs(a) do sum = sum + v if v < mini then mini = v elseif v > maxi then maxi = v end end
+    sum = sum / #a
+    local d = 10^prec
+    local ret = math.floor( sum * d + 0.5 ) / d
+    if ret < mini then ret = mini elseif ret > maxi then ret = maxi end
+    return ret, mini, maxi
 end
 
 local function saveDeviceState( dev )
@@ -651,7 +668,7 @@ end
 local function checkSensors(dev)
     D("checkSensors(%1)", dev)
     -- Check sensor(s), get current temperature.
-    dev = tonumber(dev,10)
+    dev = tonumber( dev )
     assert(dev ~= nil)
     local modeStatus = luup.variable_get(OPMODE_SID, "ModeStatus", dev) or "Off"
     local currentTemp = 0
@@ -662,12 +679,12 @@ local function checkSensors(dev)
     local maxSensorBattery = getVarNumeric( "MaxSensorBattery", 7200, dev )
     local minBatteryLevel = getVarNumeric( "MinBatteryLevel", 1, dev )
     for _,ts in ipairs(tst) do
-        local tnum = tonumber(ts,10)
+        local tnum = tonumber( ts )
         if tnum ~= nil and luup.devices[tnum] ~= nil then
             local temp, since, rawTemp
             rawTemp,since = luup.variable_get( TEMPSENS_SID, "CurrentTemperature", tnum )
-            if rawTemp ~= nil then temp = tonumber(rawTemp, 10) else temp = nil end
-            since = tonumber(since or "", 10) or 0
+            if rawTemp ~= nil then temp = tonumber(rawTemp) else temp = nil end
+            since = tonumber( since or 0 ) or 0
             D("checkSensors() temp sensor %1 (%2) temp %3 since %4 (raw %5)",
                 ts, luup.devices[tnum].description, temp, since, rawTemp)
             local valid = true -- innocent until proven guilty
@@ -927,6 +944,9 @@ function handleWatch( dev, sid, var, oldVal, newVal, pdev)
         elseif var == "SetpointCooling" then
             luup.variable_set( SETPOINT_SID .. "_Cool", "CurrentSetpoint", newVal, dev )
         end
+		local heatSP = getVarNumeric( "SetpointHeating", newVal, dev, MYSID )
+		local coolSP = getVarNumeric( "SetpointCooling", heatSP, dev, MYSID )
+		luup.variable_set( SETPOINT_SID, "AllSetpoints", tostring(heatSP) .. "," .. tostring(coolSP) .. "," .. tostring(mean({heatSP,coolSP},1)), dev )
         checkSensors(pdev)
     elseif sid == SWITCH_SID then
         L("Device %1 (%2) changed %3 from %4 to %5", dev, luup.devices[dev].description, var, oldVal, newVal)
@@ -1319,14 +1339,14 @@ local function plugin_runOnce(dev)
         luup.variable_set(OPMODE_SID, "ModeStatus", "Off", dev)
         luup.variable_set(OPMODE_SID, "EnergyModeTarget", EMODE_NORMAL, dev)
         luup.variable_set(OPMODE_SID, "EnergyModeStatus", EMODE_NORMAL, dev)
-        -- Do NOT set AutoMode; see http://wiki.micasaverde.com/index.php/Luup_UPnP_Variables_and_Actions#TemperatureSetpoint1
-        -- luup.variable_set(OPMODE_SID, "AutoMode", nil, dev)
 
         luup.variable_set(FANMODE_SID, "Mode", "Auto", dev)
         luup.variable_set(FANMODE_SID, "FanStatus", "Off", dev)
 
         luup.variable_set(SETPOINT_SID, "Application", "DualHeatingCooling", dev)
         luup.variable_set(SETPOINT_SID, "SetpointAchieved", "0", dev)
+        luup.variable_set(SETPOINT_SID, "AllSetpoints", "", dev)
+        luup.variable_set(SETPOINT_SID, "AutoMode", 0, dev)
 
         luup.variable_set(HADEVICE_SID, "ModeSetting", "1:;2:;3:;4:", dev)
 
@@ -1355,13 +1375,6 @@ local function plugin_runOnce(dev)
         luup.variable_set(HADEVICE_SID, "ModeSetting", "1:;2:;3:;4:", dev)
     end
 
-    if rev < 010102 then
-        D("runOnce() updating config for rev 010102")
-        -- We should not set AutoMode (see above), but we used to. Empty the variable, then try to delete it.
-        luup.variable_set(OPMODE_SID, "AutoMode", "", dev)
-        luup.inet.wget("http://127.0.0.1/port_3480/data_request?id=variableset&DeviceNum=" .. dev .. "&serviceId=" .. OPMODE_SID .. "&Variable=AutoMode&Value=")
-    end
-
     if rev < 010103 then
         D("runOnce() updating config for rev 010103")
         luup.attr_set( "device_type", MYTYPE, dev ) -- hoo boy...
@@ -1372,6 +1385,11 @@ local function plugin_runOnce(dev)
     if rev < 010104 then
         luup.variable_set(HADEVICE_SID, "Commands", "avt_mode_off,avt_mode_heat,avt_mode_cool,avt_mode_auto,avt_emode,avt_emode_normal,avt_emode_eco,heating_setpoint,cooling_setpoint,avt_fanmode_auto,avt_fanmode_on,avt_fanmode_periodic", dev)
     end
+    
+	if rev < 19138 then
+        luup.variable_set(SETPOINT_SID, "AutoMode", 0, dev)
+        luup.variable_set(SETPOINT_SID, "AllSetpoints", "", dev)
+	end
 
     -- No matter what happens above, if our versions don't match, force that here/now.
     if (rev ~= _CONFIGVERSION) then
@@ -1401,7 +1419,7 @@ function plugin_init(dev)
 
     -- Check for ALTUI and OpenLuup
     for k,v in pairs(luup.devices) do
-        if v.device_type == "urn:schemas-upnp-org:device:altui:1" then
+        if v.device_type == "urn:schemas-upnp-org:device:altui:1" and v.device_num_parent == 0 then
             local rc,rs,jj,ra
             D("init() detected ALTUI at %1", k)
             isALTUI = true

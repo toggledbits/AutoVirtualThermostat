@@ -198,7 +198,7 @@ var AutoVirtualThermostat = (function(api) {
             html += '</div>';
             
             html += '<div class="clearfix"></div><div><br/><b>IMPORTANT!</b> After changing device configuration, it is required that you <a href="http://';
-            html += window.location.hostname + '/port_3480/data_request?id=reload&r=' + Math.random() + '" target="_blank">reload Luup</a> for your changes to take effect.</div>';
+            html += '/port_3480/data_request?id=reload&r=' + Math.random() + '" target="_blank">reload Luup</a> for your changes to take effect.</div>';
 
             html += '<div class="clearfix"></div>';
             html += '<div class="tb-about">Auto Virtual Thermostat ver 1.6develop &#169; 2017,2018 Patrick H. Rigney, All Rights Reserved.<br/>';

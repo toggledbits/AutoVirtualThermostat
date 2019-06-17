@@ -72,7 +72,7 @@ local function dump(t)
     return str
 end
 
-local function L(msg, ...)
+local function L(msg, ...) -- luacheck: ignore 212
     local str
     local level = 50
     if type(msg) == "table" then
@@ -177,21 +177,20 @@ local function restoreDeviceState( dev )
             return true
         end
     end
+    devState = {}
     return false
 end
 
 local function setDeviceState( ahu, name, value, dev )
     ahu = tostring(ahu)
-    if devState[ahu] == nil then devState[ahu] = {} end
+    devState[ahu] = devState[ahu] or {}
     devState[ahu][name] = value
     saveDeviceState( dev )
 end
 
 local function getDeviceState( ahu, name, dev, dflt )
     ahu = tostring(ahu)
-    if devState[ahu] == nil then devState[ahu] = {} end
-    if devState[ahu][name] == nil then return dflt end
-    return devState[ahu][name]
+    return (devState[ahu] or {})[name] or dflt
 end
 
 local function deviceOnOff( targetDevice, state, vtDev )
@@ -463,6 +462,9 @@ local function fanAutoOff(dev)
     elseif mode ~= "ContinuousOn" then
         clearTask(dev, "fan")
         fanOff(dev)
+    else
+		-- For continuous on, off means on
+		fanOn(dev)
     end
     updateDisplayStatus(dev)
 end
@@ -782,9 +784,7 @@ local function checkSensors(dev)
 
     -- Check schedule
     if not checkSchedule( dev ) then
-        if modeStatus == "HeatOn" or modeStatus == "CoolOn" then
-            goIdle(dev, modeStatus)
-        end
+        goIdle(dev, modeStatus)
         return
     end
 
@@ -805,8 +805,12 @@ local function checkSensors(dev)
             luup.variable_set( SETPOINT_SID, "CurrentSetpoint", heatSP, dev )
             callHeat(dev)
         else
-            -- No change. Check fan operation.
+            -- No change. Neither heating nor cooling should be running.
+			deviceOnOff("HeatingDevice", false, dev)
+			deviceOnOff("CoolingDevice", false, dev)
+            -- Check fan operation.
             local fanMode = luup.variable_get(FANMODE_SID, "Mode", dev) or "Auto"
+			local task = findTask( dev, "fan" )
             if fanMode == "ContinuousOn" then
                 local fanStatus = luup.variable_get(FANMODE_SID, "FanStatus", dev) or "Off"
                 if fanStatus ~= "On" then
@@ -814,13 +818,17 @@ local function checkSensors(dev)
                     fanOn(dev)
                 end
             elseif fanMode == "PeriodicOn" then
-                local task = findTask( dev, "fan" )
                 if task == nil then
                     -- We're in PeriodicOn, so there should always be a task on the queue (on or off).
                     -- If no task, launch
                     L("Periodic fan task missing. Starting cycle.")
                     fanPeriodicOff( dev )
                 end
+            else
+				if task == nil then
+					-- If no fan task pending, make sure fan is off.
+					fanOff( dev )
+				end
             end
         end
     elseif modeStatus == "CoolOn" or modeStatus == "HeatOn" then
@@ -1215,6 +1223,7 @@ function requestHandler(lul_request, lul_parameters, lul_outputformat)
         local st = {
             name=_PLUGIN_NAME,
             version=_PLUGIN_VERSION,
+            pluginid=_PLUGIN_ID,
             configversion=_CONFIGVERSION,
             author="Patrick H. Rigney (rigpapa)",
             url=_PLUGIN_URL,
@@ -1500,6 +1509,7 @@ function plugin_init(dev)
     -- sorted later.
     if not restoreDeviceState( dev ) then -- attempt to restore device state, save across luup reloads
         L{level=2,msg="Can't reload device state or expired, resetting..."}
+        fanAutoOff( dev )
         goIdle(dev)
     else
         local tt = luup.variable_get(OPMODE_SID, "ModeTarget", dev) or "Off"
@@ -1516,6 +1526,7 @@ function plugin_init(dev)
             luup.variable_set(OPMODE_SID, "ModeStatus", "HeatOn", dev)
         else
             -- Off, idle, or not sure. Restore to idle.
+            fanAutoOff( dev )
             goIdle(dev, st)
         end
     end

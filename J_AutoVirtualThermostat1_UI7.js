@@ -114,32 +114,42 @@ var AutoVirtualThermostat = (function(api) {
             html += "</style>";
             html += '<link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">';
 
-            // Make our own list of devices, sorted by room.
-            var devices = api.getListOfDevices();
-            var rooms = [];
-            var noroom = { "id": 0, "name": "No Room", "devices": [] };
-            rooms[noroom.id] = noroom;
-            for (i=0; i<devices.length; i+=1) {
-                var devobj = api.cloneObject( devices[i] ); // clone, we're modifying
-                devobj.friendlyName = "#" + devobj.id + " " + devobj.name;
-                var roomid = devobj.room || 0;
-                var roomObj = rooms[roomid];
-                if ( roomObj === undefined ) {
-                    roomObj = api.cloneObject( api.getRoomObject( roomid ) );
-                    roomObj.devices = [];
-                    rooms[roomid] = roomObj;
-                }
-                roomObj.devices.push( devobj );
-            }
-            var r = rooms.sort(
-                // Special sort for room name -- sorts "No Room" last
-                function (a, b) {
-                    if (a.id == 0) return 1;
-                    if (b.id == 0) return -1;
-                    if (a.name === b.name) return 0;
-                    return a.name > b.name ? 1 : -1;
-                }
-            );
+			// Make our own list of devices, sorted by room.
+			var devices = api.cloneObject( api.getListOfDevices() );
+			var noroom = { "id": 0, "name": "No Room", "devices": [] };
+			var rooms = [ noroom ];
+			var roomIx = {};
+			roomIx[String(noroom.id)] = noroom;
+			var dd = devices.sort( function( a, b ) {
+				if ( a.id == myDevice ) return -1;
+				if ( b.id == myDevice ) return 1;
+				if ( a.name.toLowerCase() === b.name.toLowerCase() ) {
+					return a.id < b.id ? -1 : 1;
+				}
+				return a.name.toLowerCase() < b.name.toLowerCase() ? -1 : 1;
+			});
+			for (i=0; i<dd.length; i+=1) {
+				var devobj = api.cloneObject( dd[i] );
+				devobj.friendlyName = "#" + devobj.id + " " + devobj.name;
+				var roomid = devobj.room || 0;
+				var roomObj = roomIx[String(roomid)];
+				if ( roomObj === undefined ) {
+					roomObj = api.cloneObject( api.getRoomObject( roomid ) );
+					roomObj.devices = [];
+					roomIx[String(roomid)] = roomObj;
+					rooms[rooms.length] = roomObj;
+				}
+				roomObj.devices.push( devobj );
+			}
+			r = rooms.sort(
+				// Special sort for room name -- sorts "No Room" last
+				function (a, b) {
+					if (a.id === 0) return 1;
+					if (b.id === 0) return -1;
+					if (a.name === b.name) return 0;
+					return a.name > b.name ? 1 : -1;
+				}
+			);
 
             // Sensor
             html += '<div id="sensorgroup">';

@@ -47,8 +47,7 @@
             <run>
                 -- Change the operating to one of Off, HeatOn, CoolOn, AutoChangeOver
                 -- receives NewModeTarget; variables ModeTarget/ModeStatus
-                local newMode = lul_settings.NewModeTarget
-                AutoVirtualThermostat.actionSetModeTarget( lul_device, newMode )
+                AutoVirtualThermostat.actionSetModeTarget( lul_device, lul_settings )
                 return true
             </run>
         </action>

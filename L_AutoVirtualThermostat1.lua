@@ -963,14 +963,6 @@ function handleWatch( dev, sid, var, oldVal, newVal, pdev)
     end
 end
 
--- Action for SetModeTarget -- change current operating mode
-function actionSetModeTarget( dev, newMode )
-    D("actionSetModeTarget(%1,%2)", dev, newMode)
-    -- ModeTarget is watched, so that callback is where the work is done.
-    luup.variable_set( OPMODE_SID, "ModeTarget", newMode, dev )
-    return true
-end
-
 function actionSetEnergyModeTarget( dev, newMode )
     D("actionSetEnergyModeTarget(%1,%2)", dev, newMode)
     if newMode == nil then return false, "Invalid NewModeTarget" end
@@ -1075,6 +1067,20 @@ function actionSetCurrentSetpoint( dev, newSP, whichSP )
     end
     saveEnergyModeSetpoints( dev )
     luup.variable_set( SETPOINT_SID, "SetpointAchieved", "0", dev )
+end
+
+-- Action for SetModeTarget -- change current operating mode
+function actionSetModeTarget( dev, lul_settings )
+    D("actionSetModeTarget(%1,%2)", dev, newMode)
+	if lul_settings.NewHeatSetpoint then
+		actionSetCurrentSetpoint( dev, lul_settings.NewHeatSetpoint, "Heating" )
+	end
+	if lul_settings.NewCoolSetpoint then
+		actionSetCurrentSetpoint( dev, lul_settings.NewCoolSetpoint, "Cooling" )
+	end
+    -- ModeTarget is watched, so that callback is where the work is done.
+    luup.variable_set( OPMODE_SID, "ModeTarget", lul_settings.NewModeTarget or "Off", dev )
+    return true
 end
 
 function actionSetDebug( dev, state )

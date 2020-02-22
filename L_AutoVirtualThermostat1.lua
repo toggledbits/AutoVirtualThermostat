@@ -132,39 +132,39 @@ end
 local function getVar( name, dflt, dev, sid )
     assert(name ~= nil)
     assert(dev ~= nil)
-	sid = sid or MYSID
+    sid = sid or MYSID
     local s = luup.variable_get(sid, name, dev) or ""
-	if s == "" then return dflt end
-	return s
+    if s == "" then return dflt end
+    return s
 end
 
 -- Get numeric variable, or return default value if not set or blank
 local function getVarNumeric( name, dflt, dev, sid )
-	local s = getVar( name, dflt, dev, sid )
-	return tonumber(s) or dflt
+    local s = getVar( name, dflt, dev, sid )
+    return tonumber(s) or dflt
 end
 
 local function setVar( sid, name, val, dev )
-	sid = sid or MYSID
-	dev = dev or pluginDevice
-	val = tostring(val)
-	local s = luup.variable_get( sid, name, dev )
-	if s ~= val then
-		luup.variable_set( sid, name, val, dev )
-	end
-	return s
+    sid = sid or MYSID
+    dev = dev or pluginDevice
+    val = tostring(val)
+    local s = luup.variable_get( sid, name, dev )
+    if s ~= val then
+        luup.variable_set( sid, name, val, dev )
+    end
+    return s
 end
 
 local function initVar( sid, name, val, dev )
-	sid = sid or MYSID
-	dev = dev or pluginDevice
-	local s = luup.variable_get( sid, name, dev ) -- nil if not set
-	if not s then
-		val = tostring(val)
-		luup.variable_set( sid, name, val, dev )
-		return val
-	end
-	return s
+    sid = sid or MYSID
+    dev = dev or pluginDevice
+    local s = luup.variable_get( sid, name, dev ) -- nil if not set
+    if not s then
+        val = tostring(val)
+        luup.variable_set( sid, name, val, dev )
+        return val
+    end
+    return s
 end
 
 local function limit( n, nMin, nMax )
@@ -685,9 +685,9 @@ local function checkSchedule(dev)
 end
 
 local function round(v, n)
-	local pow = 10 ^ (n or 0)
-	if v < 0 then return math.floor( v * pow - 0.5 ) / pow end
-	return math.floor( v * pow + 0.5 ) / pow 
+    local pow = 10 ^ (n or 0)
+    if v < 0 then return math.floor( v * pow - 0.5 ) / pow end
+    return math.floor( v * pow + 0.5 ) / pow
 end
 
 local function constrain( val, valMin, valMax )
@@ -828,10 +828,12 @@ local function checkSensors(dev)
         if (modeTarget == "AutoChangeOver" or modeTarget == "CoolOn") and (currentTemp >= (coolSP+differential)) then
             setVar( SETPOINT_SID, "SetpointAchieved", "0", dev )
             setVar( SETPOINT_SID, "CurrentSetpoint", coolSP, dev )
+            setVar( MYSID, "LastMode", "Cooling", dev )
             callCool(dev)
         elseif (modeTarget == "AutoChangeOver" or modeTarget == "HeatOn") and (currentTemp <= (heatSP-differential)) then
             setVar( SETPOINT_SID, "SetpointAchieved", "0", dev )
             setVar( SETPOINT_SID, "CurrentSetpoint", heatSP, dev )
+            setVar( MYSID, "LastMode", "Heating", dev )
             callHeat(dev)
         else
             -- No change. Neither heating nor cooling should be running.
@@ -1221,6 +1223,7 @@ function requestHandler(lul_request, lul_parameters, lul_outputformat)
                     table.insert( issinfo, issKeyVal( "curtemp", luup.variable_get( TEMPSENS_SID, "CurrentTemperature", lnum ), { unit="°" .. sysTemps.unit } ) )
                     table.insert( issinfo, issKeyVal( "cursetpoint", getVarNumeric( "SetpointHeating", sysTemps.default, lnum, MYSID ) ) )
                     table.insert( issinfo, issKeyVal( "cursetpoint1", getVarNumeric( "SetpointCooling", sysTemps.default, lnum, MYSID ) ) )
+                    table.insert( issinfo, issKeyVal( "cursetpointindex", getVar( "LastMode", "Heating", lnum, MYSID ) == "Cooling" and 1 or 0 ) )
                     table.insert( issinfo, issKeyVal( "step", 1 ) )
                     table.insert( issinfo, issKeyVal( "minVal", sysTemps.minimum ) )
                     table.insert( issinfo, issKeyVal( "maxVal", sysTemps.maximum ) )
@@ -1245,7 +1248,7 @@ function requestHandler(lul_request, lul_parameters, lul_outputformat)
                 D("requestHandler() handling action path %1, dev %2, action %3, param %4", path, dev, act, p )
                 if act == "SETMODE" then
                     local newMode = map( { OFF="Off",HEAT="HeatOn",COOL="CoolOn",AUTO="AutoChangeOver" }, string.upper( p or "" ) )
-                    actionSetModeTarget( dev, newMode )
+                    actionSetModeTarget( dev, { NewModeTarget=newMode } )
                 elseif act == "SETENERGYMODE" then
                     local newMode = map( { COMFORT="Normal", ECONOMY="EnergySavingsMode" }, string.upper( p or "" ) )
                     actionSetEnergyModeTarget( dev, newMode )
@@ -1447,10 +1450,6 @@ local function plugin_runOnce(dev)
         initVar(SETPOINT_SID .. "_Cool", "CurrentSetpoint", getVar( "SetpointCooling", "", dev, MYSID ), dev )
     end
 
-    if rev < 010104 then
-        initVar(HADEVICE_SID, "Commands", "avt_mode_off,avt_mode_heat,avt_mode_cool,avt_mode_auto,avt_emode,avt_emode_normal,avt_emode_eco,heating_setpoint,cooling_setpoint,avt_fanmode_auto,avt_fanmode_on,avt_fanmode_periodic", dev)
-    end
-
     if rev < 19138 then
         initVar(SETPOINT_SID, "AutoMode", 0, dev)
         initVar(SETPOINT_SID, "AllSetpoints", "", dev)
@@ -1481,8 +1480,8 @@ end
 function plugin_init(dev)
     D("init(%1)", dev)
     L("starting plugin version %1 device %2", _PLUGIN_VERSION, dev)
-	
-	pluginDevice = dev
+
+    pluginDevice = dev
 
     if luup.attr_get("subcategory_num", dev) ~= "1" then
         luup.attr_set("subcategory_num", 1, dev)

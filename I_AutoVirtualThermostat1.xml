@@ -9,11 +9,11 @@
         -- Reference: http://upnp.org/specs/ha/UPnP-ha-HVAC_UserOperatingMode-v1-Service.pdf
         -- -------------------------------------------------------------------------------------------------------------------------
         function avtCleanup(p)
-            if luup.variable_get("urn:micasaverde-com:serviceId:HaDevice1","Commands",tonumber(p)) == nil then 
+            if luup.variable_get("urn:micasaverde-com:serviceId:HaDevice1","Commands",tonumber(p)) == nil then
                 luup.log("AutoVirtualThermostat: no cleanup tasks remaining (good)")
-                return 
+                return
             end
-            local req = "http://127.0.0.1/port_3480/data_request?id=variableset&amp;DeviceNum=" .. p .. 
+            local req = "http://127.0.0.1/port_3480/data_request?id=variableset&amp;DeviceNum=" .. p ..
                 "&amp;serviceId=urn:micasaverde-com:serviceId:HaDevice1&amp;Variable=Commands&amp;Value="
             local status, result = luup.inet.wget(req)
             -- luup.log("AutoVirtualThermostat: " .. req)
@@ -21,7 +21,7 @@
                 luup.log("AutoVirtualThermostat: Cleanup of Commands failed, status " .. tostring(status) .. ", result " .. tostring(result),1)
             end
         end
-        
+
         function avtStart(dev)
             luup.log("AutoVirtualThermostat Plugin START-UP!")
             AutoVirtualThermostat = require("L_AutoVirtualThermostat1")
@@ -30,11 +30,11 @@
             luup.call_delay( 'avtCleanup', 90, tostring(dev) )
             return AutoVirtualThermostat.plugin_init(dev)
         end
-        
+
         function avtWatchCallback( dev, svc, var, oldVal, newVal )
             AutoVirtualThermostat.handleWatch( dev, svc, var, oldVal, newVal, luup.device )
         end
-        
+
         function avtDelayCallback( parm )
             AutoVirtualThermostat.runTask( parm, luup.device )
         end
@@ -141,7 +141,7 @@
                 -- N.B. Should not be called without calling SetApplication first!
                 local app = luup.variable_get( "urn:upnp-org:serviceId:TemperatureSetpoint1", "Application", lul_device ) or "DualHeatingCooling"
                 if app == "Heating" then
-                    luup.variable_set( "urn:upnp-org:serviceId:TemperatureSetpoint1", "CurrentSetpoint", 
+                    luup.variable_set( "urn:upnp-org:serviceId:TemperatureSetpoint1", "CurrentSetpoint",
                         luup.variable_get( "urn:toggledbits-com:serviceId:AutoVirtualThermostat1", "SetpointHeating", lul_device ), lul_device )
                 elseif app == "Cooling" then
                     luup.variable_set( "urn:upnp-org:serviceId:TemperatureSetpoint1", "CurrentSetpoint",
@@ -156,7 +156,7 @@
             <name>SetCurrentSetpoint</name>
             <run>
                 -- Set temperature setpoint for heating (convenience function to mimic other devices, but this is incompletely defined).
-luup.log("urn:upnp-org:serviceId:TemperatureSetpoint1_Heat/SetCurrentSetpoint")   
+luup.log("urn:upnp-org:serviceId:TemperatureSetpoint1_Heat/SetCurrentSetpoint")
                 AutoVirtualThermostat.actionSetCurrentSetpoint( lul_device, lul_settings.NewCurrentSetpoint, "Heating" )
                 return true
             </run>
@@ -178,7 +178,7 @@ luup.log("urn:upnp-org:serviceId:TemperatureSetpoint1_Heat/SetCurrentSetpoint")
             <name>SetCurrentSetpoint</name>
             <run>
                 -- Set temperature setpoint for cooling (convenience function to mimic other devices, but this is incompletely defined).
-luup.log("urn:upnp-org:serviceId:TemperatureSetpoint1_Cool/SetCurrentSetpoint")   
+luup.log("urn:upnp-org:serviceId:TemperatureSetpoint1_Cool/SetCurrentSetpoint")
                 AutoVirtualThermostat.actionSetCurrentSetpoint( lul_device, lul_settings.NewCurrentSetpoint, "Cooling" )
                 return true
             </run>

@@ -32,7 +32,7 @@
         end
         
         function avtWatchCallback( dev, svc, var, oldVal, newVal )
-            AutoVirtualThermostat.handleWatch( dev, svc, var, oldVal, newVal, luup.device )
+            AutoVirtualThermostat.handleWatch( dev, svc, var, oldVal, newVal )
         end
         
         function avtDelayCallback( parm )

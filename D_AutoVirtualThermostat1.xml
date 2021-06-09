@@ -7,13 +7,13 @@
     <device>
         <deviceType>urn:schemas-toggledbits-com:device:AutoVirtualThermostat:1</deviceType>
         <staticJson>D_AutoVirtualThermostat1.json</staticJson>
-        <friendlyName>Auto Virtual Thermostat</friendlyName>
+        <friendlyName>Auto Virtual Thermostat Plugin</friendlyName>
         <manufacturer>rigpapa</manufacturer>
         <manufacturerURL>http://www.toggledbits.com/avt/</manufacturerURL>
         <modelDescription></modelDescription>
-        <modelName>Auto Virtual Thermostat</modelName>
-        <handleChildren>0</handleChildren>
-        <Category_Num>5</Category_Num>
+        <modelName>Auto Virtual Thermostat Plugin</modelName>
+        <handleChildren>1</handleChildren>
+        <Category_Num>0</Category_Num>
         <SubCategory_Num>1</SubCategory_Num>
         <serviceList>
           <service>

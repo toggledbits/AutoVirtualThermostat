@@ -100,7 +100,9 @@ var AutoVirtualThermostat = (function(api) {
     function configurePlugin()
     {
         if ( true ) {
-            api.setCpanelContent('<h4>There is no settings UI for the plugin in this version/branch. Settings are handled by modifying state variables on the child devices/thermostats.</h4>');
+            api.setCpanelContent('<h4>There is no settings UI for the plugin in this version/branch. Settings are handled by modifying state variables on the child devices/thermostats.</h4><p><a href="'+
+                api.getDataRequestURL() + '?id=lr_AutoVirtualThermostat&action=addchild" target="_blank">Add Child Thermostat</a></p>'
+            );
             return;
         }
 

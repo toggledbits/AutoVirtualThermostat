@@ -288,7 +288,7 @@ local function insertTask( t )
     -- Insert ourselves in list, in time order (least to greatest)
     local lt = devTasks
     local pt = nil
-	D("insertTask() insert %2 scanning %1", lt, t)
+    D("insertTask() insert %2 scanning %1", lt, t)
     while lt do
         if lt.time > t.time then
             break
@@ -933,7 +933,7 @@ function handleWatch( tdev, sid, var, oldVal, newVal )
                 fanAutoOff( tdev )
             end
         elseif var == "FanStatus" then
-            updateDisplayStatus( tdev ) 
+            updateDisplayStatus( tdev )
         end
     elseif sid == OPMODE_SID and var == "ModeTarget" then
         transition( tdev, oldVal, newVal )
@@ -942,10 +942,10 @@ function handleWatch( tdev, sid, var, oldVal, newVal )
     elseif sid == OPSTATE_SID and var == "ModeState" then
         updateDisplayStatus( tdev )
     elseif sid == TEMPSENS_SID then
-		-- Check all children, since we don't know which
-		for _,child in ipairs( children ) do
-			checkSensors( child )
-		end
+        -- Check all children, since we don't know which
+        for _,child in ipairs( children ) do
+            checkSensors( child )
+        end
     elseif sid == MYSID then
         if var == "SetpointHeating" then
             -- Blech. I hate this hacked crap. But it's what external UIs have come to expect...
@@ -1411,8 +1411,8 @@ local function watchDevice( devVar, tdev )
 end
 
 function child_init( cdev, pdev )
-	-- "One time" initializations
-	child_runOnce( cdev, pdev )
+    -- "One time" initializations
+    child_runOnce( cdev, pdev )
 
     -- Other inits
     local units = luup.attr_get("TemperatureFormat", 0)
@@ -1481,15 +1481,15 @@ end
 function plugin_init(dev)
     D("init(%1)", dev)
     L("starting plugin version %1 device %2", _PLUGIN_VERSION, dev)
-	
-	pluginDevice = dev
+
+    pluginDevice = dev
 
     if luup.attr_get("subcategory_num", dev) ~= "1" then
         luup.attr_set("subcategory_num", 1, dev)
     end
 
     -- Check for ALTUI and OpenLuup
-	children = {}
+    children = {}
     for k,v in pairs(luup.devices) do
         if v.device_type == "urn:schemas-upnp-org:device:altui:1" and v.device_num_parent == 0 then
             local rc,rs,jj,ra
@@ -1507,8 +1507,8 @@ function plugin_init(dev)
         elseif v.device_type == "openLuup" then
             L("Detected openLuup!")
             isOpenLuup = true
-		elseif v.device_num_parent == dev then
-			table.insert( children, k )
+        elseif v.device_num_parent == dev then
+            table.insert( children, k )
         end
     end
 
@@ -1536,20 +1536,20 @@ function plugin_init(dev)
         D("plugin_init() enabled debug by state var, MAXEVENTS=%1", MAXEVENTS)
     end
 
-	-- Create child if we have none.
-	if ( #children == 0 ) then
-		local ptr = luup.chdev.start( dev );
-		luup.chdev.append( dev, ptr, 't1', 'Generic Virtual Thermostat',
-			"urn:schemas-upnp-org:device:HVAC_ZoneThermostat:1", 
-			"D_HVAC_ZoneThermostat1.xml",
-			"", 
-			",device_json=D_HVAC_ZoneTwoSetPointsThermostat1.json", false )
-		luup.chdev.sync( dev, ptr )
-	end
+    -- Create child if we have none.
+    if ( #children == 0 ) then
+        local ptr = luup.chdev.start( dev );
+        luup.chdev.append( dev, ptr, 't1', 'Generic Virtual Thermostat',
+            "urn:schemas-upnp-org:device:HVAC_ZoneThermostat:1",
+            "D_HVAC_ZoneThermostat1.xml",
+            "",
+            ",device_json=D_HVAC_ZoneTwoSetPointsThermostat1.json", false )
+        luup.chdev.sync( dev, ptr )
+    end
 
-	for _,cdev in ipairs( children ) do
-		child_init( cdev )
-	end
+    for _,cdev in ipairs( children ) do
+        child_init( cdev )
+    end
 
     L("Running!")
 

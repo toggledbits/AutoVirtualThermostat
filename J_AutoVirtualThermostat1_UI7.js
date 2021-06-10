@@ -99,6 +99,11 @@ var AutoVirtualThermostat = (function(api) {
 
     function configurePlugin()
     {
+		if ( true ) {
+			api.setCpanelContent('<h4>There is no UI for this version/branch</h4>');
+			return;
+		}
+
         try {
             initPlugin();
             

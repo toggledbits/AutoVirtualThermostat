@@ -17,7 +17,7 @@ module("L_AutoVirtualThermostat1", package.seeall)
 
 local _PLUGIN_ID = 8956
 local _PLUGIN_NAME = "AutoVirtualThermostat"
-local _PLUGIN_VERSION = "1.6devicetype-20020"
+local _PLUGIN_VERSION = "1.6devicetype-21161"
 local _PLUGIN_URL = "https://www.toggledbits.com/avt"
 local _CONFIGVERSION = 19138
 
@@ -1224,7 +1224,35 @@ function requestHandler(lul_request, lul_parameters, lul_outputformat)
         end
     end
 
-    if action == "status" then
+    if action == "addchild" then
+        local n = #children
+        for _,child in ipairs( children ) do
+            local id = luup.attr_get( 'altid', child )
+            L("Found child with id %1", id)
+            if id then
+                local m = string.gsub( id, "^[^0-9]+", "" ) -- returns multiple results
+                m = tonumber( m )
+                if m > n then n = m end
+            end
+        end
+        local ptr = luup.chdev.start( pluginDevice )
+        for _,child in ipairs( children ) do
+            L("Appending existing child %1=%2", child, luup.devices[child])
+            luup.chdev.append( dev, ptr, luup.devices[child].id, luup.devices[child].description,
+                luup.devices[child].device_type,
+                luup.devices[child].device_file,
+                "", "", false )
+        end
+        n = n + 1
+        luup.chdev.append( pluginDevice, ptr, 't'..tostring(n), 'AVT Child '..tostring(n),
+            "urn:schemas-upnp-org:device:HVAC_ZoneThermostat:1",
+            "D_HVAC_ZoneThermostat1.xml",
+            "",
+            ",device_json=D_HVAC_ZoneTwoSetPointsThermostat1.json", false )
+        luup.chdev.sync( pluginDevice, ptr )
+        return "Created child with ID t"..tostring(n), "text/plain"
+
+    elseif action == "status" then
         local dkjson = require("dkjson")
         if dkjson == nil then return "Missing dkjson library", "text/plain" end
         local st = {

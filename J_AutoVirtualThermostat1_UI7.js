@@ -100,7 +100,7 @@ var AutoVirtualThermostat = (function(api) {
     function configurePlugin()
     {
         if ( true ) {
-            api.setCpanelContent('<h4>There is no UI for this version/branch</h4>');
+            api.setCpanelContent('<h4>There is no settings UI for the plugin in this version/branch. Settings are handled by modifying state variables on the child devices/thermostats.</h4>');
             return;
         }
 

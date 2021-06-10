@@ -21,7 +21,7 @@ local _PLUGIN_VERSION = "1.6devicetype-20020"
 local _PLUGIN_URL = "https://www.toggledbits.com/avt"
 local _CONFIGVERSION = 19138
 
-local debugMode = true
+local debugMode = false
 local MAXEVENTS = 100
 
 local MYSID = "urn:toggledbits-com:serviceId:AutoVirtualThermostat1"

@@ -1,10 +1,10 @@
 //# sourceURL=J_AutoVirtualThermostat1_UI7.js
-/** 
+/**
  * J_AutoVirtualThermostat1_UI7.js
  * Configuration interface for Virtual Thermostat
  *
  * Copyright 2017,2018 Patrick H. Rigney, All Rights Reserved.
- * This file is part of the Auto Virtual Thermostat Plugin for Vera. 
+ * This file is part of the Auto Virtual Thermostat Plugin for Vera.
  * For license information, see LICENSE at https://github.com/toggledbits/avt/
  */
 /* globals api,jQuery */
@@ -29,18 +29,18 @@ var AutoVirtualThermostat = (function(api) {
     function initPlugin() {
         api.registerEventHandler('on_ui_cpanel_before_close', myModule, 'onBeforeCpanelClose');
     }
-    
+
     function updateSelectedSensors() {
         var myDevice = api.getCpanelDeviceId();
         var slist = [];
         jQuery('select.tempsensor').each( function( ix, obj ) {
             var devId = jQuery(obj).val();
-            if (devId != "") 
+            if (devId != "")
                 slist.push( devId );
         });
         api.setDeviceStatePersistent( myDevice, serviceId, "TempSensors", slist.join(","), 0);
     }
-    
+
     function updateSchedule() {
         var myDevice = api.getCpanelDeviceId();
         var schedStart = jQuery("select#schedStart").val();
@@ -50,7 +50,7 @@ var AutoVirtualThermostat = (function(api) {
         } else {
             schedStart = parseInt(schedStart) * 60;
             var m = jQuery("select#schedStart-min").val();
-            if ( ""!=m ) 
+            if ( ""!=m )
                 schedStart += parseInt(m);
             if ( ""==schedEnd )
                 schedEnd = 0;
@@ -73,7 +73,7 @@ var AutoVirtualThermostat = (function(api) {
         html += '</select>';
         return html;
     }
-    
+
     function deviceOptions( lbl, elemId, rooms, filterFunc ) {
         var myDevice = api.getCpanelDeviceId();
         var html = '<div>';
@@ -84,7 +84,7 @@ var AutoVirtualThermostat = (function(api) {
             if (room.devices) {
                 room.devices.forEach( function(dev) {
                     if ( dev.id != myDevice && filterFunc( dev.id, dev ) ) {
-                        if (first) 
+                        if (first)
                             html += "<option disabled>--" + room.name + "--</option>";
                         first = false;
                         html += '<option value="' + dev.id + '">' + dev.friendlyName + '</option>';
@@ -99,16 +99,16 @@ var AutoVirtualThermostat = (function(api) {
 
     function configurePlugin()
     {
-		if ( true ) {
-			api.setCpanelContent('<h4>There is no UI for this version/branch</h4>');
-			return;
-		}
+        if ( true ) {
+            api.setCpanelContent('<h4>There is no UI for this version/branch</h4>');
+            return;
+        }
 
         try {
             initPlugin();
-            
+
             var myDevice = api.getCpanelDeviceId();
-            
+
             var i, j, html = "";
 
             html += "<style>";
@@ -119,42 +119,42 @@ var AutoVirtualThermostat = (function(api) {
             html += "</style>";
             html += '<link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">';
 
-			// Make our own list of devices, sorted by room.
-			var devices = api.cloneObject( api.getListOfDevices() );
-			var noroom = { "id": 0, "name": "No Room", "devices": [] };
-			var rooms = [ noroom ];
-			var roomIx = {};
-			roomIx[String(noroom.id)] = noroom;
-			var dd = devices.sort( function( a, b ) {
-				if ( a.id == myDevice ) return -1;
-				if ( b.id == myDevice ) return 1;
-				if ( a.name.toLowerCase() === b.name.toLowerCase() ) {
-					return a.id < b.id ? -1 : 1;
-				}
-				return a.name.toLowerCase() < b.name.toLowerCase() ? -1 : 1;
-			});
-			for (i=0; i<dd.length; i+=1) {
-				var devobj = api.cloneObject( dd[i] );
-				devobj.friendlyName = "#" + devobj.id + " " + devobj.name;
-				var roomid = devobj.room || 0;
-				var roomObj = roomIx[String(roomid)];
-				if ( roomObj === undefined ) {
-					roomObj = api.cloneObject( api.getRoomObject( roomid ) );
-					roomObj.devices = [];
-					roomIx[String(roomid)] = roomObj;
-					rooms[rooms.length] = roomObj;
-				}
-				roomObj.devices.push( devobj );
-			}
-			r = rooms.sort(
-				// Special sort for room name -- sorts "No Room" last
-				function (a, b) {
-					if (a.id === 0) return 1;
-					if (b.id === 0) return -1;
-					if (a.name === b.name) return 0;
-					return a.name > b.name ? 1 : -1;
-				}
-			);
+            // Make our own list of devices, sorted by room.
+            var devices = api.cloneObject( api.getListOfDevices() );
+            var noroom = { "id": 0, "name": "No Room", "devices": [] };
+            var rooms = [ noroom ];
+            var roomIx = {};
+            roomIx[String(noroom.id)] = noroom;
+            var dd = devices.sort( function( a, b ) {
+                if ( a.id == myDevice ) return -1;
+                if ( b.id == myDevice ) return 1;
+                if ( a.name.toLowerCase() === b.name.toLowerCase() ) {
+                    return a.id < b.id ? -1 : 1;
+                }
+                return a.name.toLowerCase() < b.name.toLowerCase() ? -1 : 1;
+            });
+            for (i=0; i<dd.length; i+=1) {
+                var devobj = api.cloneObject( dd[i] );
+                devobj.friendlyName = "#" + devobj.id + " " + devobj.name;
+                var roomid = devobj.room || 0;
+                var roomObj = roomIx[String(roomid)];
+                if ( roomObj === undefined ) {
+                    roomObj = api.cloneObject( api.getRoomObject( roomid ) );
+                    roomObj.devices = [];
+                    roomIx[String(roomid)] = roomObj;
+                    rooms[rooms.length] = roomObj;
+                }
+                roomObj.devices.push( devobj );
+            }
+            r = rooms.sort(
+                // Special sort for room name -- sorts "No Room" last
+                function (a, b) {
+                    if (a.id === 0) return 1;
+                    if (b.id === 0) return -1;
+                    if (a.name === b.name) return 0;
+                    return a.name > b.name ? 1 : -1;
+                }
+            );
 
             // Sensor
             html += '<div id="sensorgroup">';
@@ -169,7 +169,7 @@ var AutoVirtualThermostat = (function(api) {
                         if (devid == myDevice) continue; // don't allow self-reference
                         var st = api.getDeviceState( devid, "urn:upnp-org:serviceId:TemperatureSensor1", "CurrentTemperature" );
                         if (st) {
-                            if (first) 
+                            if (first)
                                 html += "<option disabled>--" + roomObj.name + "--</option>";
                             first = false;
                             html += '<option value="' + devid + '">' + roomObj.devices[j].friendlyName + '</option>';
@@ -181,21 +181,21 @@ var AutoVirtualThermostat = (function(api) {
             html += '&nbsp;<i class="material-icons w3-large color-green cursor-hand" id="addsensorbtn">add_circle_outline</i>';
             html += "</div>"; // sensorrow
             html += '</div>'; // sensorgroup
-            
+
             // Heating Device
             html += '<div class="clearfix"></div>';
             html += deviceOptions('Heating Device:', 'hdevice', rooms, function( id, dev ) {
                 var st = api.getDeviceState( id, "urn:upnp-org:serviceId:SwitchPower1", "Status" );
                 return st !== false;
             });
-            
+
             // Cooling Device
             html += '<div class="clearfix"></div>';
             html += deviceOptions('Cooling Device:', 'cdevice', rooms, function( id, dev ) {
                 var st = api.getDeviceState( id, "urn:upnp-org:serviceId:SwitchPower1", "Status" );
                 return st !== false;
             });
-            
+
             // Fan Device
             html += '<div class="clearfix"></div>';
             html += deviceOptions('Fan Device:', 'fdevice', rooms, function( id, dev ) {
@@ -211,7 +211,7 @@ var AutoVirtualThermostat = (function(api) {
             html += '&nbsp;to&nbsp;';
             html += timeSelector('schedEnd');
             html += '</div>';
-            
+
             html += '<div class="clearfix"></div><div><br/><b>IMPORTANT!</b> After changing device configuration, it is required that you <a href="http://';
             html += '/port_3480/data_request?id=reload&r=' + Math.random() + '" target="_blank">reload Luup</a> for your changes to take effect.</div>';
 
@@ -222,12 +222,12 @@ var AutoVirtualThermostat = (function(api) {
             html += ' CAUTION! This plugin is not to be used to control unattended devices!';
             html += '<p class="tb-begging"><b>Find Auto Virtual Thermostat useful?</b> Please consider a <a target="_blank" href="https://www.toggledbits.com/donate">a small donation</a>, to support my continuing work on this and other plugins. I am grateful for any amount you choose to give!</p>';
             html += '</div>';
-            
-            html += '<div class="tb-links">Tech Support links: <a target="_blank" href="/port_3480/data_request?id=variableset&serviceId=urn:toggledbits-com:serviceId:AutoVirtualThermostat1&DeviceNum=' 
+
+            html += '<div class="tb-links">Tech Support links: <a target="_blank" href="/port_3480/data_request?id=variableset&serviceId=urn:toggledbits-com:serviceId:AutoVirtualThermostat1&DeviceNum='
                 + myDevice + '&Variable=DebugMode&Value=1000">Debug ON</a>';
             html += ' &#149; <a target="_blank" href="/port_3480/data_request?id=reload">Reload Luup</a>';
             html += ' &#149; <a target="_blank" href="/port_3480/data_request?id=lr_AutoVirtualThermostat&action=status">Status Data</a>';
-            html += ' &#149; <a target="_blank" href="/port_3480/data_request?id=variableset&serviceId=urn:toggledbits-com:serviceId:AutoVirtualThermostat1&DeviceNum=' 
+            html += ' &#149; <a target="_blank" href="/port_3480/data_request?id=variableset&serviceId=urn:toggledbits-com:serviceId:AutoVirtualThermostat1&DeviceNum='
                 + myDevice + '&Variable=DebugMode&Value=">Debug OFF</a>';
             html += '</div>';
 
@@ -244,7 +244,7 @@ var AutoVirtualThermostat = (function(api) {
                 t.forEach( function( v ) {
                     ix = ix + 1;
                     var newId = "sensor" + ix;
-                    jQuery('div#sensorgroup').append('<div class="sensorrow clearfix"><label class="col-xs-2" for="' + newId 
+                    jQuery('div#sensorgroup').append('<div class="sensorrow clearfix"><label class="col-xs-2" for="' + newId
                         + '">&nbsp;</label><select class="tempsensor" id="' + newId + '"></select></div>');
                     jQuery('select#' + newId).append(jQuery('select#sensor1 option').clone());
                     jQuery('select#' + newId).val(v);
@@ -255,29 +255,29 @@ var AutoVirtualThermostat = (function(api) {
                 var lastId = jQuery("div.sensorrow:last select").attr("id");
                 var ix = parseInt(lastId.substr(6)) + 1;
                 var newId = "sensor" + ix;
-                jQuery('div#sensorgroup').append('<div class="sensorrow clearfix"><label class="col-xs-2" for="' + newId 
+                jQuery('div#sensorgroup').append('<div class="sensorrow clearfix"><label class="col-xs-2" for="' + newId
                     + '">&nbsp;</label><select class="tempsensor" id="' + newId + '"></select></div>');
                 jQuery('select#' + newId).append(jQuery('select#sensor1 option').clone()).change( updateSelectedSensors );
             });
-            
+
             s = api.getDeviceState(myDevice, serviceId, "FanDevice");
             jQuery("select#fdevice").val(s ? s : "").change( function( obj ) {
                 var newVal = jQuery(this).val();
                 api.setDeviceStatePersistent(myDevice, serviceId, "FanDevice", newVal, 0);
             });
-            
+
             s = api.getDeviceState(myDevice, serviceId, "CoolingDevice");
             jQuery("select#cdevice").val(s ? s : "").change( function( obj ) {
                 var newVal = jQuery(this).val();
                 api.setDeviceStatePersistent(myDevice, serviceId, "CoolingDevice", newVal, 0);
             });
-            
+
             s = api.getDeviceState(myDevice, serviceId, "HeatingDevice");
             jQuery("select#hdevice").val(s ? s : "").change( function( obj ) {
                 var newVal = jQuery(this).val();
                 api.setDeviceStatePersistent(myDevice, serviceId, "HeatingDevice", newVal, 0);
             });
-            
+
             s = api.getDeviceState(myDevice, serviceId, "Schedule");
             if (s) {
                 var t = s.split("-");
